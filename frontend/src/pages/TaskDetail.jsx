@@ -1,112 +1,118 @@
 import React, { useEffect, useState } from "react";
-import MainLayout from "../layout/MainLayout";
-import { api } from "../api/client";
 import { useParams } from "react-router-dom";
-
-import TaskMeta from "../components/TaskMeta";
-import TaskTimeline from "../components/TaskTimeline";
-import TaskComments from "../components/TaskComments";
-import EditTaskPanel from "../components/EditTaskPanel";   // ← ADDED
-import ConfirmDialog from "../components/ConfirmDialog";   // ← ADDED
-import { useNavigate } from "react-router-dom";             // ← ADDED
+import MainLayout from "../layout/MainLayout";
+import { api } from "../services/api";
+import { useUser } from "../context/UserContext";
 
 export default function TaskDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();                            // ← ADDED
+  const { token } = useUser();
+
   const [task, setTask] = useState(null);
-  const [editOpen, setEditOpen] = useState(false);           // ← ADDED
-  const [deleteOpen, setDeleteOpen] = useState(false);      // ← ADDED
-
-  // demo data for timeline & comments
-  const [timeline, setTimeline] = useState([
-    { title: "Task created", description: "Initial creation", created_at: new Date() },
-  ]);
-
   const [comments, setComments] = useState([]);
+  const [timeline, setTimeline] = useState([]);
+  const [attachments, setAttachments] = useState([]);
 
   useEffect(() => {
-    api.get(`/tasks/${id}`)
-      .then((res) => setTask(res.data))
-      .catch(() => {});
-  }, [id]);
+    if (!token) return;
 
-  const updateTask = (patch) => {
-    api.put(`/tasks/${id}`, patch)
+    api.get(`/tasks/${id}`, token)
       .then((res) => setTask(res.data))
-      .catch(() => {});
-  };
+      .catch((err) => console.error("Failed to load task", err));
 
-  const addComment = (text) => {
-    setComments([{ text }, ...comments]);
-  };
+    api.get(`/comments/task/${id}`, token)
+      .then((res) => setComments(res.data))
+      .catch((err) => console.error("Failed to load comments", err));
+
+    api.get(`/timeline/task/${id}`, token)
+      .then((res) => setTimeline(res.data))
+      .catch((err) => console.error("Failed to load timeline", err));
+
+    api.get(`/attachments/task/${id}`, token)
+      .then((res) => setAttachments(res.data))
+      .catch((err) => console.error("Failed to load attachments", err));
+
+  }, [token, id]);
 
   if (!task) {
     return (
       <MainLayout>
-        <p>Loading...</p>
+        <p className="p-4">Loading task details...</p>
       </MainLayout>
     );
   }
 
   return (
     <MainLayout>
-      <div className="flex gap-6">
-        {/* Main Content */}
-        <div className="flex-1 space-y-6">
-          <h1 className="text-3xl font-bold">{task.title}</h1>
+      <div className="p-4 space-y-8">
+        
+        {/* --- Task Info --- */}
+        <div className="bg-white p-6 shadow rounded">
+          <h1 className="text-2xl font-bold">{task.title}</h1>
+          <p className="text-gray-600 mt-2">{task.description}</p>
 
-          {/* Edit Button */}
-          <button
-            onClick={() => setEditOpen(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 mb-4"
-          >
-            Edit Task
-          </button>   {/* ← ADDED */}
-
-          {/* Delete Button */}
-          <button
-            onClick={() => setDeleteOpen(true)}
-            className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 mb-4 ml-3"
-          >
-            Delete Task
-          </button>   {/* ← ADDED */}
-
-          <p className="text-slate-700">{task.description}</p>
-
-          {/* Timeline */}
-          <div>
-            <h2 className="text-xl font-semibold mb-3">Timeline</h2>
-            <TaskTimeline timeline={timeline} />
+          <div className="mt-4 text-sm text-gray-500">
+            <p>Status: {task.status}</p>
+            <p>Priority: {task.priority ?? "-"}</p>
+            <p>Due date: {task.due_date ? new Date(task.due_date).toLocaleString() : "-"}</p>
           </div>
-
-          {/* Comments */}
-          <TaskComments comments={comments} onAdd={addComment} />
         </div>
 
-        {/* Meta Panel */}
-        <TaskMeta task={task} onUpdate={updateTask} />
+        {/* --- Comments --- */}
+        <div className="bg-white p-6 shadow rounded">
+          <h2 className="text-xl font-semibold mb-4">Comments</h2>
+
+          {comments.map((c) => (
+            <div key={c.id} className="border-b py-2">
+              <p>{c.text}</p>
+              <small className="text-gray-500">
+                {new Date(c.created_at).toLocaleString()}
+              </small>
+            </div>
+          ))}
+
+          {comments.length === 0 && (
+            <p className="text-gray-400 italic">No comments yet.</p>
+          )}
+        </div>
+
+        {/* --- Timeline --- */}
+        <div className="bg-white p-6 shadow rounded">
+          <h2 className="text-xl font-semibold mb-4">Timeline</h2>
+
+          {timeline.map((t) => (
+            <div key={t.id} className="border-b py-2">
+              <p className="font-medium">{t.title}</p>
+              <p className="text-gray-500 text-sm">{t.description}</p>
+            </div>
+          ))}
+
+          {timeline.length === 0 && (
+            <p className="text-gray-400 italic">No timeline events.</p>
+          )}
+        </div>
+
+        {/* --- Attachments --- */}
+        <div className="bg-white p-6 shadow rounded">
+          <h2 className="text-xl font-semibold mb-4">Attachments</h2>
+
+          {attachments.map((file) => (
+            <a
+              key={file.id}
+              href={file.path}
+              target="_blank"
+              className="block py-2 text-blue-600 underline"
+            >
+              {file.name}
+            </a>
+          ))}
+
+          {attachments.length === 0 && (
+            <p className="text-gray-400 italic">No attachments.</p>
+          )}
+        </div>
+
       </div>
-
-      {/* Edit Panel */}
-      <EditTaskPanel
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        task={task}
-        onUpdated={(updated) => setTask(updated)}
-      />   {/* ← ADDED */}
-
-      {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        open={deleteOpen}
-        title="Delete Task"
-        message="Are you sure you want to delete this task? This action cannot be undone."
-        onCancel={() => setDeleteOpen(false)}
-        onConfirm={() => {
-          api.delete(`/tasks/${task.id}`).then(() => {
-            navigate("/tasks");
-          });
-        }}
-      />   {/* ← ADDED */}
     </MainLayout>
   );
 }

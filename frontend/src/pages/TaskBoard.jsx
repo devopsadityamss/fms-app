@@ -1,105 +1,55 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import MainLayout from "../layout/MainLayout";
-import { api } from "../api/client";
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
-import Column from "../components/KanbanColumn";
-import CreateTaskPanel from "../components/CreateTaskPanel";
-
-/**
- * TaskBoard with DnD persistence.
- * - Drag a task card and drop it into a column (status).
- * - On drop, do an optimistic UI change and call PUT /tasks/:id { status: newStatus }.
- * - If API fails, refetch tasks.
- */
-
-function useQuery() {
-  return new URLSearchParams(window.location.search);
-}
+import { api } from "../services/api";
+import { useUser } from "../context/UserContext";
 
 export default function TaskBoard() {
-  const q = useQuery();
-  const project_id = q.get("project_id");
-
+  const { token } = useUser();
   const [tasks, setTasks] = useState([]);
-  const [createOpen, setCreateOpen] = useState(false);
-
-  const loadTasks = () => {
-    api
-      .get("/tasks", { params: project_id ? { project_id } : {} })
-      .then((res) => setTasks(res.data))
-      .catch(() => {});
-  };
 
   useEffect(() => {
-    loadTasks();
-  }, [project_id]);
+    if (!token) return;
 
-  const columns = {
-    pending: tasks.filter((t) => t.status === "pending"),
-    in_progress: tasks.filter((t) => t.status === "in_progress"),
-    completed: tasks.filter((t) => t.status === "completed"),
-  };
+    api.get("/tasks", token)
+      .then((res) => setTasks(res.data))
+      .catch((err) => console.error("Failed to load tasks:", err));
+  }, [token]);
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const pending = tasks.filter((t) => t.status === "pending");
+  const inProgress = tasks.filter((t) => t.status === "in_progress");
+  const completed = tasks.filter((t) => t.status === "completed");
 
-  const handleDragEnd = (event) => {
-    const { active, over } = event;
-    if (!over) return;
+  const Column = ({ title, items }) => (
+    <div className="w-full p-4 bg-white shadow rounded">
+      <h2 className="text-lg font-semibold mb-4">{title}</h2>
 
-    const taskId = active.id;
-    const newStatus = over.id; // we set column element id to status
+      {items.map((task) => (
+        <Link
+          to={`/tasks/${task.id}`}
+          key={task.id}
+          className="block p-3 border rounded mb-3 hover:bg-gray-100"
+        >
+          <h3 className="font-medium">{task.title}</h3>
+          <p className="text-sm text-gray-500">
+            Project: {task.project_id} • Priority: {task.priority ?? "-"}
+          </p>
+        </Link>
+      ))}
 
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task) return;
-    if (task.status === newStatus) return;
-
-    // Optimistic update
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
-
-    // Persist change
-    api
-      .put(`/tasks/${taskId}`, { status: newStatus })
-      .then(() => {
-        // success; nothing else needed since we already updated UI
-      })
-      .catch((err) => {
-        console.error("Failed to persist task status:", err);
-        // rollback by reloading tasks
-        loadTasks();
-      });
-  };
+      {items.length === 0 && (
+        <p className="text-gray-400 text-sm italic">No tasks</p>
+      )}
+    </div>
+  );
 
   return (
     <MainLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Task Board</h1>
-
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-        >
-          + New Task
-        </button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4">
+        <Column title="Pending" items={pending} />
+        <Column title="In Progress" items={inProgress} />
+        <Column title="Completed" items={completed} />
       </div>
-
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <div className="grid md:grid-cols-3 gap-6">
-          {Object.entries(columns).map(([status, list]) => (
-            <SortableContext key={status} items={list.map((t) => t.id)} strategy={rectSortingStrategy}>
-              {/* Column expects `id` attribute on the drop area equal to status */}
-              <Column id={status} title={status.replace("_", " ")} tasks={list} />
-            </SortableContext>
-          ))}
-        </div>
-      </DndContext>
-
-      <CreateTaskPanel
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={() => loadTasks()}
-        projectId={project_id}
-      />
     </MainLayout>
   );
 }

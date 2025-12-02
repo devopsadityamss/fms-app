@@ -1,26 +1,25 @@
 import axios from "axios";
 
-const BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+const BASE_URL = "http://localhost:8000";
 
-export const api = axios.create({
-  baseURL: BASE,
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
+export const api = {
+  get: (url, token) =>
+    axios.get(BASE_URL + url, {
+      headers: { Authorization: `Bearer ${token}` }
+    }),
 
-// Helper functions (optional, but useful)
-export const fetchProjects = () => api.get("/projects").then((res) => res.data);
-export const fetchTasks = (project_id) =>
-  api
-    .get("/tasks", { params: project_id ? { project_id } : {} })
-    .then((res) => res.data);
+  post: (url, data, token) =>
+    axios.post(BASE_URL + url, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    }),
 
-export const fetchTask = (id) =>
-  api.get(`/tasks/${id}`).then((res) => res.data);
+  put: (url, data, token) =>
+    axios.put(BASE_URL + url, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    }),
 
-export const createTask = (data) =>
-  api.post("/tasks", data).then((res) => res.data);
-
-export const updateTask = (id, data) =>
-  api.put(`/tasks/${id}`, data).then((res) => res.data);
+  delete: (url, token) =>
+    axios.delete(BASE_URL + url, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+};

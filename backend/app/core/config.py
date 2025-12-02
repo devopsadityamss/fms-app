@@ -2,30 +2,21 @@ import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings
 
-
 class Settings(BaseSettings):
-    # Database
-    DATABASE_URL: str
+    # Required
+    SUPABASE_URL: str
+    SUPABASE_ANON_KEY: str
+    SUPABASE_JWT_SECRET: str
 
-    # Auth / JWT
+    # Optional but required for your app/env
+    DATABASE_URL: str
+    SUPABASE_SERVICE_ROLE_KEY: str
     SECRET_KEY: str
 
     # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ]
+    CORS_ORIGINS: list[str] = ["*"]
 
-    # Supabase
-    SUPABASE_URL: Optional[str] = None
-    SUPABASE_ANON_KEY: Optional[str] = None
-    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
-
-    # Pydantic v2 config
-    model_config = {
-        "env_file": ".env",
-        "env_file_encoding": "utf-8"
-    }
-
+    class Config:
+        env_file = ".env"
 
 settings = Settings()

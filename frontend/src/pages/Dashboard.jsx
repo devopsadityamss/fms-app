@@ -1,16 +1,25 @@
 import React, { useEffect, useState } from "react";
 import MainLayout from "../layout/MainLayout";
 import { api } from "../api/client";
-import { TaskStatusPie, TasksByProjectBar } from "../components/TaskCharts";   // ← ADDED
+import { useUser } from "../context/UserContext";   // <-- correct import
+import { TaskStatusPie, TasksByProjectBar } from "../components/TaskCharts";
 
 export default function Dashboard() {
+  const { token } = useUser();
   const [projects, setProjects] = useState([]);
   const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
-    api.get("/projects").then((res) => setProjects(res.data)).catch(() => {});
-    api.get("/tasks").then((res) => setTasks(res.data)).catch(() => {});
-  }, []);
+    if (!token) return;
+
+    api.get("/projects/", token)
+      .then((res) => setProjects(res.data))
+      .catch(() => {});
+
+    api.get("/tasks/", token)
+      .then((res) => setTasks(res.data))
+      .catch(() => {});
+  }, [token]);
 
   return (
     <MainLayout>
@@ -35,8 +44,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Charts Section */}
-      <div className="grid md:grid-cols-2 gap-6 mt-6">   // ← ADDED
+      <div className="grid md:grid-cols-2 gap-6 mt-6">
         <div className="bg-white p-4 rounded shadow">
           <h4 className="font-semibold mb-2">Task status</h4>
           <TaskStatusPie data={tasks} />
@@ -46,8 +54,7 @@ export default function Dashboard() {
           <h4 className="font-semibold mb-2">Tasks by project</h4>
           <TasksByProjectBar projects={projects} tasks={tasks} />
         </div>
-      </div>   // ← ADDED
-
+      </div>
     </MainLayout>
   );
 }
