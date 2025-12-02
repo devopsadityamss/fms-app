@@ -1,0 +1,52 @@
+{
+  "info": {
+    "_postman_id": "fms-api-test",
+    "name": "FMS API Test Suite",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List Projects",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/projects"
+      }
+    },
+    {
+      "name": "Create Project",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"name\": \"Test\", \"description\": \"Postman test\"}"
+        },
+        "url": "{{base_url}}/projects"
+      }
+    },
+    {
+      "name": "Create Task",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"project_id\": \"{{project_id}}\", \"title\": \"Task\", \"description\": \"test\"}"
+        },
+        "url": "{{base_url}}/tasks"
+      }
+    }
+  ]
+}

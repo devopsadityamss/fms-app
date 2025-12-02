@@ -1,56 +1,65 @@
-# app/models.py
+# backend/app/models.py
+from sqlalchemy import Column, Text, Integer, TIMESTAMP, ForeignKey, Enum as SAEnum
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.sql import func
+from .database import Base
+import enum
+import sqlalchemy as sa
 
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID, ENUM
-from .db import Base
-import datetime
+# Must match DB enum values
+class TaskStatusEnum(str, enum.Enum):
+    pending = "pending"
+    in_progress = "in_progress"
+    completed = "completed"
 
-# Correct ENUM to match database values
-task_status_enum = ENUM(
-    'pending', 'in_progress', 'completed',
-    name='task_status',
-    create_type=False
-)
 
 class Profile(Base):
     __tablename__ = "profiles"
 
     id = Column(UUID(as_uuid=True), primary_key=True)
-    auth_id = Column(UUID(as_uuid=True), unique=True)
-    email = Column(Text, nullable=False)
+
+    # REMOVED: metadata / profile_metadata (not in DB, not needed)
+
+    created_at = Column(TIMESTAMP(timezone=True))
+    updated_at = Column(TIMESTAMP(timezone=True))
+    avatar_url = Column(Text)
+
+    email = Column(Text, unique=True)
     full_name = Column(Text)
-    role = Column(Text, default="user")
-    meta = Column(JSON, default={})               # <--- FIXED
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
+    role = Column(Text)
 
 
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()"))
     name = Column(Text, nullable=False)
     description = Column(Text)
-    owner_id = Column(UUID(as_uuid=True))
-    is_archived = Column(Boolean, default=False)
-    meta = Column(JSON, default={})
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
-
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class Task(Base):
     __tablename__ = "tasks"
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
-    project_id = Column(UUID(as_uuid=True))
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()"))
+
+    project_id = Column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+
     title = Column(Text, nullable=False)
     description = Column(Text)
-    status = Column(task_status_enum, nullable=False, default='pending')
-    priority = Column(Integer, default=2)         # 1=low, 2=medium, 3=high
-    assignee_id = Column(UUID(as_uuid=True))
-    reporter_id = Column(UUID(as_uuid=True))
-    due_date = Column(DateTime)
-    meta = Column(JSON, default={})               # <--- FIXED
-    created_at = Column(DateTime)
-    updated_at = Column(DateTime)
+
+    status = Column(
+        SAEnum(TaskStatusEnum, name="task_status", native_enum=False),
+        server_default="pending"
+    )
+
+    priority = Column(Integer, default=1)
+
+    assignee_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+    reporter_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id"))
+
+    due_date = Column(TIMESTAMP(timezone=True))
+
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())

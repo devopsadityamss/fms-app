@@ -1,35 +1,69 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from "react";
+import { Routes, Route, BrowserRouter } from "react-router-dom";   // ← Updated: added BrowserRouter
 
-function App() {
-  const [count, setCount] = useState(0)
+import Dashboard from "./pages/Dashboard";
+import Projects from "./pages/Projects";
+import TaskBoard from "./pages/TaskBoard";
+import TaskDetail from "./pages/TaskDetail";
+import ProjectDetail from "./pages/ProjectDetail";   // ← ADDED
+import Login from "./pages/Login";                    // ← ADDED
+import Register from "./pages/Register";              // ← ADDED
+import ProtectedRoute from "./components/ProtectedRoute";   // ← ADDED
+import { UserProvider } from "./context/UserContext";       // ← ADDED
 
+export default function App() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <UserProvider>                                      // ← ADDED
+      <BrowserRouter>                                   // ← ADDED
+        <Routes>
 
-export default App
+          {/* Auth */}
+          <Route path="/login" element={<Login />} />           // ← ADDED
+          <Route path="/register" element={<Register />} />     // ← ADDED
+
+          {/* Protected pages */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />                                                    // ← Updated
+
+          <Route
+            path="/projects"
+            element={
+              <ProtectedRoute>
+                <Projects />
+              </ProtectedRoute>
+            }
+          />                                                    // ← Updated
+
+          <Route path="/projects/:id" element={<ProjectDetail />} />   // ← ADDED
+
+          <Route
+            path="/tasks"
+            element={
+              <ProtectedRoute>
+                <TaskBoard />
+              </ProtectedRoute>
+            }
+          />                                                    // ← Updated
+
+          <Route
+            path="/tasks/:id"
+            element={
+              <ProtectedRoute>
+                <TaskDetail />
+              </ProtectedRoute>
+            }
+          />                                                    // ← Updated
+
+          <Route path="/profile" element={<div>Profile Page</div>} />
+
+        </Routes>
+      </BrowserRouter>                                   // ← ADDED
+    </UserProvider>                                      // ← ADDED
+  );
+}
