@@ -6,6 +6,7 @@ from ..models import Task as TaskModel
 from ..schemas.task import Task, TaskCreate, TaskUpdate
 from sqlalchemy import select
 from ..core.auth import require_user
+from app.crud.audit_log import create_audit_log
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -84,3 +85,19 @@ async def delete_task(task_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(t)
     await db.commit()
     return {"ok": True}
+
+@router.post("/", response_model=Task)
+async def create_task(task_in: TaskCreate, db: AsyncSession = Depends(get_db), user = Depends(require_user)):
+    task = await crud.create_task(db, task_in, user.id)
+
+    # audit log
+    await create_audit_log(
+        db,
+        user_id=user.id,
+        entity_type="task",
+        entity_id=task.id,
+        action="created",
+        detail=f"Task '{task.title}' created",
+    )
+
+    return task

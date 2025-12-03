@@ -9,7 +9,7 @@ export default function MainLayout({ children }) {
 
       <div className="flex flex-col flex-1">
         <Header />
-        <main className="p-6">
+        <main className="ml-64 w-full p-6 overflow-y-auto">
           {children}
         </main>
       </div>

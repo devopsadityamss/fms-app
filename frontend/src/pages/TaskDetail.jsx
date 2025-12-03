@@ -24,13 +24,13 @@ export default function TaskDetail() {
       .then((res) => setComments(res.data))
       .catch((err) => console.error("Failed to load comments", err));
 
-    api.get(`/timeline/task/${id}`, token)
-      .then((res) => setTimeline(res.data))
-      .catch((err) => console.error("Failed to load timeline", err));
+    // api.get(`/timeline/task/${id}`, token)
+    //   .then((res) => setTimeline(res.data))
+    //   .catch((err) => console.error("Failed to load timeline", err));
 
-    api.get(`/attachments/task/${id}`, token)
-      .then((res) => setAttachments(res.data))
-      .catch((err) => console.error("Failed to load attachments", err));
+    // api.get(`/attachments/task/${id}`, token)
+    //   .then((res) => setAttachments(res.data))
+    //   .catch((err) => console.error("Failed to load attachments", err));
 
   }, [token, id]);
 
