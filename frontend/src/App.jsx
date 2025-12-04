@@ -1,3 +1,5 @@
+// frontend/src/App.jsx
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
@@ -9,14 +11,21 @@ import ProjectDetail from "./pages/ProjectDetail";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { UserProvider } from "./context/UserContext"; // if you keep this import remove it (we now wrap at top-level)
+import RoleRegistration from "./pages/RoleRegistration";
 
+
+// ------------------------------
+// This is the ONLY component App.jsx should export
+// ------------------------------
 export default function App() {
   return (
     <Routes>
       {/* Auth */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
+      {/* NEW USER: Role registration (NOT protected) */}
+      <Route path="/register-roles" element={<RoleRegistration />} />
 
       {/* Protected pages */}
       <Route
@@ -37,7 +46,14 @@ export default function App() {
         }
       />
 
-      <Route path="/projects/:id" element={<ProjectDetail />} />
+      <Route
+        path="/projects/:id"
+        element={
+          <ProtectedRoute>
+            <ProjectDetail />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/tasks"

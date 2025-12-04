@@ -2,7 +2,10 @@
 
 from sqlalchemy import Column, Text, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
 from app.core.database import Base
+
 
 class Profile(Base):
     __tablename__ = "profiles"
@@ -14,3 +17,10 @@ class Profile(Base):
     email = Column(Text, unique=True)
     full_name = Column(Text)
     role = Column(Text)
+
+    # NEW: RBAC relationship (Step 1)
+    roles = relationship(
+        "UserRole",
+        back_populates="user",
+        cascade="all, delete-orphan"
+    )

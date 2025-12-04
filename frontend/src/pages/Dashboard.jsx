@@ -3,6 +3,7 @@ import MainLayout from "../layout/MainLayout";
 import { api } from "../api/client";
 import { useUser } from "../context/UserContext";   // <-- correct import
 import { TaskStatusPie, TasksByProjectBar } from "../components/TaskCharts";
+import Navbar from "../components/Navbar";           // <-- ADDED
 
 export default function Dashboard() {
   const { token } = useUser();
@@ -23,6 +24,9 @@ export default function Dashboard() {
 
   return (
     <MainLayout>
+      {/* 🟦 ADDED NAVBAR */}
+      <Navbar />
+
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
       <div className="grid md:grid-cols-3 gap-6">

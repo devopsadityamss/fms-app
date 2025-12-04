@@ -1,56 +1,98 @@
 import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate, Link } from "react-router-dom";
+import { api } from "../services/api";
+
 
 export default function Register() {
   const [email, setEmail] = useState("");
-  const [pass, setPass] = useState("");
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
 
-  const handleRegister = async () => {
-    setError("");
-    const { error } = await supabase.auth.signUp({
-      email,
-      password: pass,
-    });
-    if (error) setError(error.message);
-    else navigate("/"); // auto-login because Supabase handles session
+  const handleSignup = async (e) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      // 1️⃣ Create user in Supabase Auth
+      const { data, error: signupError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+        });
+
+      if (signupError) {
+        setError(signupError.message);
+        return;
+      }
+
+      const user = data?.user;
+      if (!user) {
+        setError("Signup succeeded but no user returned.");
+        return;
+      }
+
+      // 2️⃣ Insert SUPABASE user into your backend profiles table
+      await api.post("/auth/create-profile", {
+        id: user.id,
+        email,
+        full_name: fullName,
+      });
+
+      // 3️⃣ Ask user to login
+      setSuccess(true);
+
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      setError("Signup failed");
+    }
   };
 
   return (
-    <div className="flex items-center justify-center h-screen bg-slate-100">
-      <div className="bg-white p-6 shadow rounded w-96">
-        <h2 className="text-2xl font-semibold mb-4">Register</h2>
+    <div style={{ padding: 20, maxWidth: 500, margin: "40px auto" }}>
+      <h2>Create Account</h2>
 
-        {error && <p className="text-red-600 mb-2">{error}</p>}
+      {success && (
+        <div style={{ color: "green", marginBottom: 10 }}>
+          Account created! Redirecting to login…
+        </div>
+      )}
 
+      {error && (
+        <div style={{ color: "red", marginBottom: 10 }}>
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSignup}>
         <input
-          className="w-full p-2 border rounded mb-3"
+          placeholder="Full Name"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          style={{ width: "100%", padding: 8, marginBottom: 10 }}
+        />
+        <input
           placeholder="Email"
+          value={email}
           onChange={(e) => setEmail(e.target.value)}
+          style={{ width: "100%", padding: 8, marginBottom: 10 }}
         />
         <input
-          type="password"
-          className="w-full p-2 border rounded mb-3"
           placeholder="Password"
-          onChange={(e) => setPass(e.target.value)}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: "100%", padding: 8, marginBottom: 10 }}
         />
 
-        <button
-          onClick={handleRegister}
-          className="w-full bg-indigo-600 text-white p-2 rounded"
-        >
-          Register
+        <button type="submit" style={{ padding: "8px 14px" }}>
+          Create Account
         </button>
-
-        <p className="text-sm mt-3">
-          Already have an account?{" "}
-          <Link to="/login" className="text-indigo-600">
-            Login
-          </Link>
-        </p>
-      </div>
+      </form>
     </div>
   );
 }

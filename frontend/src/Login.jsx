@@ -59,6 +59,17 @@ export default function Login() {
         >
           Login
         </button>
+
+        {/* 🔵 ADDED — Sign-Up Link */}
+        <div className="mt-4 text-center">
+          <a
+            href="/register"
+            className="text-purple-600 hover:underline"
+          >
+            Don't have an account? Create one
+          </a>
+        </div>
+
       </form>
     </div>
   );
