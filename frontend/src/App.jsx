@@ -1,79 +1,151 @@
-// frontend/src/App.jsx
-
+// src/App.jsx
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 
-import Dashboard from "./pages/Dashboard";
-import Projects from "./pages/Projects";
-import TaskBoard from "./pages/TaskBoard";
-import TaskDetail from "./pages/TaskDetail";
-import ProjectDetail from "./pages/ProjectDetail";
+// Public
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import ProtectedRoute from "./components/ProtectedRoute";
 import RoleRegistration from "./pages/RoleRegistration";
 
+// Router + Protected
+import ProtectedRoute from "./components/ProtectedRoute";
+import DashboardRouter from "./pages/DashboardRouter";
 
-// ------------------------------
-// This is the ONLY component App.jsx should export
-// ------------------------------
+// Role layouts
+import AdminLayout from "./layout/admin/AdminLayout";
+import FarmerLayout from "./layout/farmer/FarmerLayout";
+import WorkerLayout from "./layout/worker/WorkerLayout";
+import TraderLayout from "./layout/trader/TraderLayout";
+
+// Role dashboards (you said you already created these)
+import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import FarmerDashboard from "./pages/dashboards/FarmerDashboard";
+import WorkerDashboard from "./pages/dashboards/WorkerDashboard";
+import TraderDashboard from "./pages/dashboards/TraderDashboard";
+
+// Example role-scoped pages (you can expand these later)
+import AdminProjects from "./pages/admin/AdminProjects";
+import AdminUsers from "./pages/admin/AdminUsers";
+
+import FarmerTasks from "./pages/farmer/FarmerTasks";
+import WorkerTasks from "./pages/worker/WorkerTasks";
+import TraderMarket from "./pages/trader/TraderMarket";
+
 export default function App() {
   return (
     <Routes>
-      {/* Auth */}
+      {/* Public */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-
-      {/* NEW USER: Role registration (NOT protected) */}
       <Route path="/register-roles" element={<RoleRegistration />} />
 
-      {/* Protected pages */}
+      {/* Root → redirect to role world */}
       <Route
         path="/"
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardRouter />
           </ProtectedRoute>
         }
       />
 
+      {/* ----------------- ADMIN WORLD ----------------- */}
       <Route
-        path="/projects"
+        path="/admin"
         element={
           <ProtectedRoute>
-            <Projects />
+            <AdminLayout>
+              <AdminDashboard />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
-
       <Route
-        path="/projects/:id"
+        path="/admin/projects"
         element={
           <ProtectedRoute>
-            <ProjectDetail />
+            <AdminLayout>
+              <AdminProjects />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
-
       <Route
-        path="/tasks"
+        path="/admin/users"
         element={
           <ProtectedRoute>
-            <TaskBoard />
+            <AdminLayout>
+              <AdminUsers />
+            </AdminLayout>
           </ProtectedRoute>
         }
       />
 
+      {/* ----------------- FARMER WORLD ----------------- */}
       <Route
-        path="/tasks/:id"
+        path="/farmer"
         element={
           <ProtectedRoute>
-            <TaskDetail />
+            <FarmerLayout>
+              <FarmerDashboard />
+            </FarmerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/farmer/tasks"
+        element={
+          <ProtectedRoute>
+            <FarmerLayout>
+              <FarmerTasks />
+            </FarmerLayout>
           </ProtectedRoute>
         }
       />
 
-      <Route path="/profile" element={<div>Profile Page</div>} />
+      {/* ----------------- WORKER WORLD ----------------- */}
+      <Route
+        path="/worker"
+        element={
+          <ProtectedRoute>
+            <WorkerLayout>
+              <WorkerDashboard />
+            </WorkerLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/worker/tasks"
+        element={
+          <ProtectedRoute>
+            <WorkerLayout>
+              <WorkerTasks />
+            </WorkerLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* ----------------- TRADER WORLD ----------------- */}
+      <Route
+        path="/trader"
+        element={
+          <ProtectedRoute>
+            <TraderLayout>
+              <TraderDashboard />
+            </TraderLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/trader/market"
+        element={
+          <ProtectedRoute>
+            <TraderLayout>
+              <TraderMarket />
+            </TraderLayout>
+          </ProtectedRoute>
+        }
+      />
     </Routes>
   );
 }

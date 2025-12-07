@@ -11,17 +11,18 @@ export default function RoleSelector({ roles, onSelect, onCancel }) {
       return;
     }
 
-    try {
-      await createBackendSession(supabaseUser.id, role);
-
-      // After backend JWT is created → go to dashboard
-      window.location.href = "/";
-    } catch (err) {
-      console.error(err);
-      alert("Failed to activate role.");
+    if (roles.length === 0) {
+      try {
+        await createBackendSession(supabaseUser.id, role);
+        window.location.href = "/";
+      } catch (err) {
+        console.error(err);
+        alert("Failed to activate role.");
+      }
+      return;
     }
 
-    if (onSelect) onSelect(role); // keep your existing callback
+    if (onSelect) onSelect(role);
   };
 
   return (
@@ -45,23 +46,33 @@ export default function RoleSelector({ roles, onSelect, onCancel }) {
           textAlign: "center",
         }}
       >
-        <h3 style={{ marginBottom: 20 }}>Select Your Role</h3>
+        <h3 style={{ marginBottom: 20, color: "#333" }}>Select Your Role</h3>
 
-        {roles.map((role) => (
-          <div
-            key={role}
-            onClick={() => handleSelect(role)}
-            style={{
-              padding: 12,
-              marginBottom: 10,
-              border: "1px solid #ccc",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            {role}
-          </div>
-        ))}
+        {roles.map((roleItem) => {
+          const label =
+            typeof roleItem === "string"
+              ? roleItem
+              : roleItem?.role || "";
+
+          return (
+            <div
+              key={label}
+              onClick={() => handleSelect(label)}
+              style={{
+                padding: 12,
+                marginBottom: 10,
+                border: "1px solid #ccc",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontWeight: "bold",
+                color: "#222",               // ⭐ FIX: visible text color
+                background: "#f9f9f9",       // (optional but looks better)
+              }}
+            >
+              {label.toUpperCase()}
+            </div>
+          );
+        })}
 
         <button
           onClick={onCancel}

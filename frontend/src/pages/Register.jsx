@@ -15,11 +15,10 @@ export default function Register() {
 
     try {
       // 1. Create user in Supabase Auth
-      const { data, error: signupError } =
-        await supabase.auth.signUp({
-          email,
-          password,
-        });
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
       if (signupError) {
         setError(signupError.message);
@@ -44,7 +43,7 @@ export default function Register() {
 
       setTimeout(() => {
         window.location.href = "/login";
-      }, 1000);
+      }, 1200);
     } catch (err) {
       console.error(err);
       setError("Signup failed");
@@ -52,52 +51,76 @@ export default function Register() {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 520, margin: "40px auto" }}>
-      <h2>Create Account</h2>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-300 to-green-600 p-4">
 
-      {success && (
-        <div style={{ color: "green", marginBottom: 10 }}>
-          Account created! Redirecting to login…
+      {/* CENTER CARD */}
+      <div className="bg-white/90 backdrop-blur-md p-10 rounded-2xl shadow-xl w-full max-w-md border">
+
+        {/* LOGO + TITLE */}
+        <div className="text-center mb-8">
+          <div className="text-4xl font-extrabold text-green-700 tracking-tight">
+            🌿 FMS
+          </div>
+          <p className="text-gray-600 mt-1 text-sm">
+            Create your account to get started
+          </p>
         </div>
-      )}
 
-      {error && (
-        <div style={{ color: "red", marginBottom: 10 }}>
-          {error}
-        </div>
-      )}
+        {/* SUCCESS MESSAGE */}
+        {success && (
+          <div className="mb-4 p-3 text-green-700 bg-green-100 rounded text-center font-semibold">
+            Account created! Redirecting...
+          </div>
+        )}
 
-      <form onSubmit={handleSignup}>
-        <input
-          placeholder="Full name"
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          style={{ width: "100%", padding: 8, marginBottom: 10 }}
-        />
-        <input
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={{ width: "100%", padding: 8, marginBottom: 10 }}
-        />
-        <input
-          placeholder="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={{ width: "100%", padding: 8, marginBottom: 10 }}
-        />
+        {/* ERROR MESSAGE */}
+        {error && (
+          <div className="mb-4 p-3 text-red-700 bg-red-100 rounded text-center font-semibold">
+            {error}
+          </div>
+        )}
 
-        <button type="submit" style={{ padding: "8px 12px" }}>
-          Register
-        </button>
-      </form>
+        {/* FORM */}
+        <form onSubmit={handleSignup}>
+          <input
+            placeholder="Full name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            className="w-full p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+          />
 
-      {/* Optional: Add a login link for users who already have an account */}
-      <div style={{ marginTop: 15, textAlign: "center" }}>
-        <a href="/login" style={{ color: "blue", cursor: "pointer" }}>
-          Already have an account? Log in
-        </a>
+          <input
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+          />
+
+          <input
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-3 mb-6 border rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+          />
+
+          {/* REGISTER BUTTON */}
+          <button
+            type="submit"
+            className="w-full bg-green-700 hover:bg-green-800 text-white p-3 rounded-lg font-semibold transition"
+          >
+            Create Account
+          </button>
+
+          {/* LOGIN LINK */}
+          <button
+            type="button"
+            onClick={() => (window.location.href = "/login")}
+            className="w-full mt-4 bg-white text-green-700 border border-green-700 p-3 rounded-lg font-semibold hover:bg-green-50 transition"
+          >
+            Already have an account? Log in
+          </button>
+        </form>
       </div>
     </div>
   );

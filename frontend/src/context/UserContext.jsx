@@ -6,7 +6,7 @@ import { api, setBackendToken } from "../services/api";
 const UserContext = createContext();
 
 export function UserProvider({ children }) {
-  const [supabaseUser, setSupabaseUser] = useState(null); // <-- NEW
+  const [supabaseUser, setSupabaseUser] = useState(null);
   const [user, setUser] = useState(null);                 // backend user (from JWT)
   const [roles, setRoles] = useState([]);
   const [activeRole, setActiveRoleState] = useState(null);
@@ -16,7 +16,7 @@ export function UserProvider({ children }) {
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        setSupabaseUser(session.user); // <-- STORE USER ID HERE
+        setSupabaseUser(session.user);
       } else {
         setSupabaseUser(null);
       }
@@ -25,10 +25,29 @@ export function UserProvider({ children }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Restore activeRole on page reload
+  useEffect(() => {
+    const saved = localStorage.getItem("activeRole");
+    if (saved && !activeRole) {
+      setActiveRoleState(saved);
+    }
+  }, []);
+
   const fetchRoles = async (profileId) => {
     const res = await api.get(`/rbac/user/${profileId}/roles`);
     return res.data?.roles || [];
   };
+
+  // ⭐ ADDED: Load roles automatically when supabaseUser is ready
+  useEffect(() => {
+    async function loadUserRoles() {
+      if (!supabaseUser?.id) return;
+      const fetched = await fetchRoles(supabaseUser.id);
+      setRoles(fetched);               // <-- ADDED
+    }
+
+    loadUserRoles();
+  }, [supabaseUser]);                 // <-- ADDED
 
   const createBackendSession = async (profileId, chosenRole) => {
     setLoading(true);
@@ -43,9 +62,9 @@ export function UserProvider({ children }) {
         setBackendToken(token);
 
         setActiveRoleState(chosenRole);
-        setRoles(res.data.roles);
+        localStorage.setItem("activeRole", chosenRole);   // <-- ADDED
 
-        // backend user object
+        setRoles(res.data.roles || []); // <-- UPDATED
         setUser({ user_id: profileId });
       }
       return res.data;
@@ -54,17 +73,21 @@ export function UserProvider({ children }) {
     }
   };
 
-  const switchRole = async (profileId, newRole) => {
+  // CLEAN + CORRECT switchRole → now automatically uses supabaseUser.id
+  const switchRole = async (newRole) => {
+    if (!supabaseUser?.id) return false;
+
     setLoading(true);
     try {
       const res = await api.post("/rbac/switch-role", {
-        user_id: profileId,
+        user_id: supabaseUser.id,
         new_active_role: newRole,
       });
 
       if (res.data?.access_token) {
         setBackendToken(res.data.access_token);
         setActiveRoleState(newRole);
+        localStorage.setItem("activeRole", newRole);       // <-- ADDED
         return true;
       }
       return false;
@@ -83,12 +106,13 @@ export function UserProvider({ children }) {
     setRoles([]);
     setActiveRoleState(null);
     setBackendToken(null);
+    localStorage.removeItem("activeRole");                 // <-- CLEAN RESET
   };
 
   return (
     <UserContext.Provider
       value={{
-        supabaseUser,   // <-- IMPORTANT EXPORT
+        supabaseUser,
         user,
         setUser,
         roles,

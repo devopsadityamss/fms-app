@@ -5,11 +5,16 @@ import Header from "../components/Header";
 export default function MainLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-slate-100">
+      {/* FIXED SIDEBAR */}
       <Sidebar />
 
-      <div className="flex flex-col flex-1">
+      {/* RIGHT SIDE CONTENT AREA */}
+      <div className="flex flex-col flex-1 ml-60">
+        {/* GLOBAL HEADER */}
         <Header />
-        <main className="ml-64 w-full p-6 overflow-y-auto">
+
+        {/* MAIN PAGE CONTENT */}
+        <main className="p-6 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -6,6 +6,13 @@ from sqlalchemy import select
 from uuid import UUID
 from datetime import datetime
 
+from pydantic import BaseModel
+
+class RoleSwitchRequest(BaseModel):
+    user_id: str
+    new_active_role: str
+
+
 from app.core.database import get_db
 from app.models.role import Role, Permission, RolePermission, UserRole
 from app.models.profile import Profile
@@ -154,10 +161,12 @@ async def get_role_permissions(role_name: str, db: AsyncSession = Depends(get_db
 
 @router.post("/switch-role")
 async def switch_role(
-    user_id: str,
-    new_active_role: str,
+    data: RoleSwitchRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    user_id = data.user_id
+    new_active_role = data.new_active_role
+
     # 1. Verify role belongs to user
     role_mappings = await db.scalars(
         select(UserRole).where(UserRole.user_id == user_id)
@@ -185,6 +194,7 @@ async def switch_role(
         "token_type": "bearer",
         "active_role": new_active_role,
     }
+
 
 
 # -------------------------

@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from "react";
-import MainLayout from "../layout/MainLayout";
 import { api } from "../api/client";
-import { useUser } from "../context/UserContext";   // <-- correct import
+import { useUser } from "../context/UserContext";
 import { TaskStatusPie, TasksByProjectBar } from "../components/TaskCharts";
-import Navbar from "../components/Navbar";           // <-- ADDED
 
 export default function Dashboard() {
   const { token } = useUser();
@@ -23,9 +21,8 @@ export default function Dashboard() {
   }, [token]);
 
   return (
-    <MainLayout>
-      {/* 🟦 ADDED NAVBAR */}
-      <Navbar />
+    <>
+      {/* NO NAVBAR HERE — it's now global via MainLayout */}
 
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
@@ -59,6 +56,6 @@ export default function Dashboard() {
           <TasksByProjectBar projects={projects} tasks={tasks} />
         </div>
       </div>
-    </MainLayout>
+    </>
   );
 }
