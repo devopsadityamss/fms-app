@@ -1,11 +1,10 @@
 # backend/app/api/rbac.py
-print("⚡ LOADED RBAC FILE:", __file__)
+print("LOADED RBAC FILE:", __file__)
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from uuid import UUID
 from datetime import datetime
-
 
 from app.core.database import get_db
 from app.models.role import Role, Permission, RolePermission, UserRole
@@ -187,14 +186,17 @@ async def switch_role(
         "active_role": new_active_role,
     }
 
+
+# -------------------------
+# BULK ASSIGN ROLES — UPDATED & IMPROVED VERSION
+# -------------------------
+
 @router.post("/assign-roles-bulk")
 async def assign_roles_bulk(data: dict, db: AsyncSession = Depends(get_db)):
     user_id = data.get("user_id")
     role_ids = data.get("role_ids", [])
-
     if not user_id or not role_ids:
         raise HTTPException(400, "user_id and role_ids are required")
-
     try:
         uid = UUID(user_id)
     except ValueError:
@@ -205,18 +207,32 @@ async def assign_roles_bulk(data: dict, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(404, "User not found")
 
-    # Validate roles
-    roles = await db.scalars(select(Role.id))
-    valid_ids = {r for r in roles}
-
+    # Validate all role_ids exist
+    existing_role_ids = await db.scalars(select(Role.id))
+    valid_ids = {r for r in existing_role_ids}
     for r in role_ids:
         if r not in valid_ids:
             raise HTTPException(400, f"Invalid role_id {r}")
 
-    # Insert mappings
+    # Avoid duplicate assignments
+    existing_rows = await db.scalars(
+        select(UserRole.role_id).where(UserRole.user_id == uid)
+    )
+    existing_ids = set(existing_rows)
+
     for role_id in role_ids:
-        mapping = UserRole(user_id=uid, role_id=role_id)
-        db.add(mapping)
+        if role_id not in existing_ids:
+            db.add(UserRole(user_id=uid, role_id=role_id))
 
     await db.commit()
-    return {"status": "roles assigned", "assigned": role_ids}
+
+    # Return role NAMES instead of just IDs (much more useful)
+    assigned_roles = await db.scalars(
+        select(Role).where(Role.id.in_(role_ids))
+    )
+    assigned_names = [r.name for r in assigned_roles]
+
+    return {
+        "status": "roles assigned",
+        "roles": assigned_names
+    }

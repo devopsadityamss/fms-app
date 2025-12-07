@@ -4,13 +4,14 @@ import { useUser } from "../context/UserContext";
 import RoleSelector from "../components/RoleSelector";
 
 export default function RoleRegistration() {
-  const { user } = useUser();
+  const { user, supabaseUser } = useUser();   // <-- IMPORTANT
   const [allRoles, setAllRoles] = useState([]);
   const [selected, setSelected] = useState([]);
   const [showSelector, setShowSelector] = useState(false);
   const [error, setError] = useState(null);
 
-  const userId = user?.id;
+  // Fix: Always pull ID from supabaseUser.id (works for onboarding)
+  const userId = user?.user_id || supabaseUser?.id;
 
   useEffect(() => {
     async function fetchRoles() {
@@ -31,17 +32,25 @@ export default function RoleRegistration() {
   };
 
   const handleSubmit = async () => {
+    if (!userId) {
+      setError("User ID missing — login again.");
+      return;
+    }
+
     if (selected.length === 0) {
       setError("Please select at least one role.");
       return;
     }
+
     try {
       await api.post("/rbac/assign-roles-bulk", {
-        user_id: userId,
+        user_id: userId,      // <-- FIXED (now guaranteed)
         role_ids: selected,
       });
+
       setShowSelector(true);
     } catch (err) {
+      console.error(err);
       setError("Failed to assign roles");
     }
   };
@@ -93,7 +102,9 @@ export default function RoleRegistration() {
               }}
             >
               <b>
-                {role.name.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                {role.name
+                  .replace("_", " ")
+                  .replace(/\b\w/g, (c) => c.toUpperCase())}
               </b>
             </div>
           );

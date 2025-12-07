@@ -1,31 +1,35 @@
 // frontend/context/UserContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { supabase } from "../lib/supabase"; // your existing supabase client
+import { supabase } from "../lib/supabase";
 import { api, setBackendToken } from "../services/api";
-
 
 const UserContext = createContext();
 
 export function UserProvider({ children }) {
-  const [user, setUser] = useState(null);          // supabase user object
-  const [roles, setRoles] = useState([]);          // ["farmer","worker"]
-  const [activeRole, setActiveRoleState] = useState(null); // "farmer"
+  const [supabaseUser, setSupabaseUser] = useState(null); // <-- NEW
+  const [user, setUser] = useState(null);                 // backend user (from JWT)
+  const [roles, setRoles] = useState([]);
+  const [activeRole, setActiveRoleState] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Listen for Supabase login/logout
   useEffect(() => {
-    // optional: initialize supabase session if already logged in
-    const ses = supabase.auth.getSession ? null : null; // keep compatibility
-    // If you have a method to fetch current user, run it here and load roles
-    // otherwise login flow will populate user and roles.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        setSupabaseUser(session.user); // <-- STORE USER ID HERE
+      } else {
+        setSupabaseUser(null);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   const fetchRoles = async (profileId) => {
-    // backend endpoint returns { roles: [...] }
     const res = await api.get(`/rbac/user/${profileId}/roles`);
     return res.data?.roles || [];
   };
 
-  // Create backend session (create-session) which returns backend token
   const createBackendSession = async (profileId, chosenRole) => {
     setLoading(true);
     try {
@@ -33,20 +37,23 @@ export function UserProvider({ children }) {
         user_id: profileId,
         active_role: chosenRole,
       });
+
       const token = res.data?.access_token;
       if (token) {
         setBackendToken(token);
+
         setActiveRoleState(chosenRole);
-        return { token, roles: res.data.roles, active_role: res.data.active_role };
-      } else {
-        throw new Error("No backend token returned");
+        setRoles(res.data.roles);
+
+        // backend user object
+        setUser({ user_id: profileId });
       }
+      return res.data;
     } finally {
       setLoading(false);
     }
   };
 
-  // Switch active role (frontend uses /rbac/switch-role which returns a new token)
   const switchRole = async (profileId, newRole) => {
     setLoading(true);
     try {
@@ -54,9 +61,9 @@ export function UserProvider({ children }) {
         user_id: profileId,
         new_active_role: newRole,
       });
-      const token = res.data?.access_token;
-      if (token) {
-        setBackendToken(token);
+
+      if (res.data?.access_token) {
+        setBackendToken(res.data.access_token);
         setActiveRoleState(newRole);
         return true;
       }
@@ -67,10 +74,11 @@ export function UserProvider({ children }) {
   };
 
   const logout = async () => {
-    // Supabase sign out if used
     try {
       await supabase.auth.signOut();
     } catch (_) {}
+
+    setSupabaseUser(null);
     setUser(null);
     setRoles([]);
     setActiveRoleState(null);
@@ -80,6 +88,7 @@ export function UserProvider({ children }) {
   return (
     <UserContext.Provider
       value={{
+        supabaseUser,   // <-- IMPORTANT EXPORT
         user,
         setUser,
         roles,

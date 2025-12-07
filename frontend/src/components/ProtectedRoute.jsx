@@ -1,20 +1,24 @@
 import { Navigate } from "react-router-dom";
 import { useUser } from "../context/UserContext";
-import { getBackendToken } from "../services/api";   // ✅ ADDED
 
 export default function ProtectedRoute({ children }) {
-  // get token from api helper (preferred)
-  const storedToken = getBackendToken();
+  const backendToken = localStorage.getItem("fms_backend_token");
+  const { roles, activeRole, user } = useUser();
 
-  // fallback: direct localStorage check
-  const backendToken =
-    storedToken || localStorage.getItem("fms_backend_token");
+  // Not authenticated → login
+  if (!backendToken || backendToken.length < 10) {
+    return <Navigate to="/login" replace />;
+  }
 
-  // context fallback (not used for auth, but don’t remove)
-  const { activeRole } = useUser();
+  // User exists but has ZERO roles → role registration
+  if (user && roles.length === 0) {
+    return <Navigate to="/register-roles" replace />;
+  }
 
-  // Robust authentication check
-  const isAuthed = backendToken && backendToken.length > 10;
+  // User has roles but has NOT selected one → show dashboard
+  if (user && roles.length > 0 && !activeRole) {
+    return <Navigate to="/" replace />;
+  }
 
-  return isAuthed ? children : <Navigate to="/login" replace />;
+  return children;
 }

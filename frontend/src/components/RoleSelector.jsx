@@ -1,66 +1,81 @@
-// frontend/components/RoleSelector.jsx
 import React from "react";
+import { useUser } from "../context/UserContext";
 
-export default function RoleSelector({ roles = [], onSelect, onCancel }) {
+export default function RoleSelector({ roles, onSelect, onCancel }) {
+  const { supabaseUser, createBackendSession } = useUser();
+
+  const handleSelect = async (role) => {
+    if (!supabaseUser?.id) {
+      alert("User ID missing — please log in again.");
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      await createBackendSession(supabaseUser.id, role);
+
+      // After backend JWT is created → go to dashboard
+      window.location.href = "/";
+    } catch (err) {
+      console.error(err);
+      alert("Failed to activate role.");
+    }
+
+    if (onSelect) onSelect(role); // keep your existing callback
+  };
+
   return (
-    <div style={overlayStyle}>
-      <div style={boxStyle}>
-        <h3>Select Your Role</h3>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.3)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+      }}
+    >
+      <div
+        style={{
+          padding: 25,
+          background: "#fff",
+          borderRadius: 10,
+          width: 300,
+          textAlign: "center",
+        }}
+      >
+        <h3 style={{ marginBottom: 20 }}>Select Your Role</h3>
 
-        {roles.length === 0 && (
-          <p style={{ color: "red" }}>No roles available.</p>
-        )}
+        {roles.map((role) => (
+          <div
+            key={role}
+            onClick={() => handleSelect(role)}
+            style={{
+              padding: 12,
+              marginBottom: 10,
+              border: "1px solid #ccc",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            {role}
+          </div>
+        ))}
 
-        <div
+        <button
+          onClick={onCancel}
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            marginTop: 12,
+            marginTop: 10,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "#444",
           }}
         >
-          {roles.map((r) => (
-            <button
-              key={r}
-              onClick={() => onSelect(r)}
-              style={{
-                padding: "10px 14px",
-                cursor: "pointer",
-                borderRadius: 6,
-              }}
-            >
-              {r.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <button onClick={onCancel} style={{ opacity: 0.7 }}>
-            Cancel
-          </button>
-        </div>
+          Cancel
+        </button>
       </div>
     </div>
   );
 }
-
-const overlayStyle = {
-  position: "fixed",
-  left: 0,
-  top: 0,
-  right: 0,
-  bottom: 0,
-  background: "rgba(0,0,0,0.35)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 9999,
-};
-
-const boxStyle = {
-  width: 360,
-  background: "#fff",
-  padding: 20,
-  borderRadius: 8,
-  boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-};

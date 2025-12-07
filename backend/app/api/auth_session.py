@@ -17,14 +17,34 @@ class BackendSessionCreate(BaseModel):
     active_role: str
 
 
+# ============================================================
+# ADDED: Proper request body model for create-profile
+# ============================================================
+from uuid import UUID
+
+class ProfileCreate(BaseModel):
+    id: UUID
+    email: str
+    full_name: str
+
+
+# ============================================================
+# FIXED: create-profile (now accepts JSON, validates UUID,
+#        prevents duplicate creation)
+# ============================================================
 @router.post("/create-profile")
-async def create_profile(id: str, email: str, full_name: str, db: AsyncSession = Depends(get_db)):
+async def create_profile(payload: ProfileCreate, db: AsyncSession = Depends(get_db)):
     from datetime import datetime
 
+    # Check if profile already exists
+    existing = await db.scalar(select(Profile).where(Profile.id == payload.id))
+    if existing:
+        return {"status": "already_exists"}
+
     profile = Profile(
-        id=id,
-        email=email,
-        full_name=full_name,
+        id=payload.id,
+        email=payload.email,
+        full_name=payload.full_name,
         created_at=datetime.utcnow(),
         updated_at=datetime.utcnow(),
     )
@@ -34,7 +54,9 @@ async def create_profile(id: str, email: str, full_name: str, db: AsyncSession =
     return {"status": "profile created"}
 
 
-
+# ============================================================
+# Existing endpoint — untouched
+# ============================================================
 @router.post("/create-session")
 async def create_session(payload: BackendSessionCreate, db: AsyncSession = Depends(get_db)):
     user_id = payload.user_id

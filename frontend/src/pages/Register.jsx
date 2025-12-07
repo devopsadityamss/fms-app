@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { api } from "../services/api";
 
-
 export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,7 +14,7 @@ export default function Register() {
     setError(null);
 
     try {
-      // 1️⃣ Create user in Supabase Auth
+      // 1. Create user in Supabase Auth
       const { data, error: signupError } =
         await supabase.auth.signUp({
           email,
@@ -33,14 +32,14 @@ export default function Register() {
         return;
       }
 
-      // 2️⃣ Insert SUPABASE user into your backend profiles table
+      // 2. Insert SUPABASE user into your backend profiles table
       await api.post("/auth/create-profile", {
         id: user.id,
         email,
         full_name: fullName,
       });
 
-      // 3️⃣ Ask user to login
+      // 3. Show success + redirect
       setSuccess(true);
 
       setTimeout(() => {
@@ -53,7 +52,7 @@ export default function Register() {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 500, margin: "40px auto" }}>
+    <div style={{ padding: 20, maxWidth: 520, margin: "40px auto" }}>
       <h2>Create Account</h2>
 
       {success && (
@@ -70,7 +69,7 @@ export default function Register() {
 
       <form onSubmit={handleSignup}>
         <input
-          placeholder="Full Name"
+          placeholder="Full name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           style={{ width: "100%", padding: 8, marginBottom: 10 }}
@@ -89,10 +88,17 @@ export default function Register() {
           style={{ width: "100%", padding: 8, marginBottom: 10 }}
         />
 
-        <button type="submit" style={{ padding: "8px 14px" }}>
-          Create Account
+        <button type="submit" style={{ padding: "8px 12px" }}>
+          Register
         </button>
       </form>
+
+      {/* Optional: Add a login link for users who already have an account */}
+      <div style={{ marginTop: 15, textAlign: "center" }}>
+        <a href="/login" style={{ color: "blue", cursor: "pointer" }}>
+          Already have an account? Log in
+        </a>
+      </div>
     </div>
   );
 }
