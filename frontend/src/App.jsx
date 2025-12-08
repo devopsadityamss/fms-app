@@ -17,11 +17,6 @@ import FarmerLayout from "./layout/farmer/FarmerLayout";
 import WorkerLayout from "./layout/worker/WorkerLayout";
 import TraderLayout from "./layout/trader/TraderLayout";
 
-// Role dashboards (you said you already created these)
-import AdminDashboard from "./pages/dashboards/AdminDashboard";
-import FarmerDashboard from "./pages/dashboards/FarmerDashboard";
-import WorkerDashboard from "./pages/dashboards/WorkerDashboard";
-import TraderDashboard from "./pages/dashboards/TraderDashboard";
 
 // Example role-scoped pages (you can expand these later)
 import AdminProjects from "./pages/admin/AdminProjects";
@@ -30,6 +25,18 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import FarmerTasks from "./pages/farmer/FarmerTasks";
 import WorkerTasks from "./pages/worker/WorkerTasks";
 import TraderMarket from "./pages/trader/TraderMarket";
+
+
+// FARMER PRODUCTION UNIT FLOW
+import CreateProductionUnit from "./pages/farmer/ProductionUnits/CreateProductionUnit";
+import SelectPracticeCategory from "./pages/farmer/ProductionUnits/SelectPracticeCategory";
+import SelectPracticeOptions from "./pages/farmer/ProductionUnits/SelectPracticeOptions";
+import UnitDetailsForm from "./pages/farmer/ProductionUnits/UnitDetailsForm";
+import StageTemplateEditor from "./pages/farmer/ProductionUnits/StageTemplateEditor";
+import ProductionUnitView from "./pages/farmer/ProductionUnits/ProductionUnitView";
+
+import FarmerDashboard from "./pages/farmer/FarmerDashboard";
+
 
 export default function App() {
   return (
@@ -143,6 +150,84 @@ export default function App() {
             <TraderLayout>
               <TraderMarket />
             </TraderLayout>
+          </ProtectedRoute>
+        }
+      />
+      {/* FARMER: Production Unit Creation Flow */}
+      <Route
+        path="/farmer/production/create"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <CreateProductionUnit />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/farmer/production/select-category/:practiceId"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <SelectPracticeCategory />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/farmer/production/select-options/:practiceId/:categoryId"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <SelectPracticeOptions />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/farmer/production/unit-details/:practiceId/:categoryId"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <UnitDetailsForm />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/farmer/production/stages"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <StageTemplateEditor />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/farmer/production/unit/:id"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <ProductionUnitView />
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Farmer Dashboard (optional but recommended) */}
+      <Route
+        path="/farmer/dashboard"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <FarmerDashboard />
+            </MainLayout>
           </ProtectedRoute>
         }
       />
