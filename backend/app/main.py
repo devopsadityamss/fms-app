@@ -5,6 +5,8 @@ from app.core.logger import logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.app.api.farmer import production_units, stages, tasks, dashboard
+
 from app.core.database import AsyncSessionLocal
 from app.core.seed_rbac import seed_rbac
 from .core.config import settings
@@ -12,6 +14,10 @@ from .core.database import engine, Base
 
 from app.core.request_middleware import RequestLoggingMiddleware
 from app.core.error_middleware import ExceptionLoggingMiddleware
+
+from backend.app.api.farmer import production_units as farmer_production
+from app.api.farmer import tasks as farmer_tasks
+from app.api.farmer import stages as farmer_stages
 
 
 # ---------------------------------------------------
@@ -42,7 +48,6 @@ app.add_middleware(ExceptionLoggingMiddleware)
 # ---------------------------------------------------
 # IMPORT ROUTERS AFTER APP IS CREATED
 # ---------------------------------------------------
-from .routers import projects, tasks, comments, timeline, attachments, auth
 from app.api import rbac
 from app.api import auth_session
 
@@ -51,14 +56,12 @@ from app.api import auth_session
 # Include Routers
 # ---------------------------------------------------
 app.include_router(auth.router)
-app.include_router(projects.router)
-app.include_router(tasks.router)
-app.include_router(comments.router)
-app.include_router(timeline.router)
-app.include_router(attachments.router)
 app.include_router(rbac.router)
 app.include_router(auth_session.router)
-
+app.include_router(production_units.router, prefix="/farmer", tags=["farmer-units"])
+app.include_router(stages.router, prefix="/farmer", tags=["farmer-stages"])
+app.include_router(tasks.router, prefix="/farmer", tags=["farmer-tasks"])
+app.include_router(dashboard.router, prefix="/farmer", tags=["farmer-dashboard"])
 
 # ---------------------------------------------------
 # COMBINED startup event (create tables + seed + logs)

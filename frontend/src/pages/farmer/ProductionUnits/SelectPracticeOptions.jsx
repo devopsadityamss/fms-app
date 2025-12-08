@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-// Hardcoded options for MVP — each will later come from backend
+// Hardcoded options for MVP — backend later
 const OPTION_MAP = {
   cereals: [
     { id: "rice", name: "Rice", img: "https://images.unsplash.com/photo-1599058917212-d750089bc07a" },
@@ -44,15 +44,25 @@ export default function SelectPracticeOptions() {
   const { practiceId, categoryId } = useParams();
   const navigate = useNavigate();
 
-  const options = OPTION_MAP[categoryId] || [];
+  const baseOptions = OPTION_MAP[categoryId] || [];
+  const [options, setOptions] = useState(baseOptions);
 
   const [selectedOptions, setSelectedOptions] = useState([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customName, setCustomName] = useState("");
 
+  // Redirect if category or practice invalid
+  useEffect(() => {
+    if (!OPTION_MAP[categoryId]) {
+      navigate(`/farmer/production/select-category/${practiceId}`);
+    }
+  }, [categoryId, navigate, practiceId]);
+
   const toggleSelection = (id) => {
     setSelectedOptions((prev) =>
-      prev.includes(id) ? prev.filter((o) => o !== id) : [...prev, id]
+      prev.includes(id)
+        ? prev.filter((o) => o !== id)
+        : [...prev, id]
     );
   };
 
@@ -62,7 +72,10 @@ export default function SelectPracticeOptions() {
       return;
     }
 
-    navigate(`/production/unit-details/${practiceId}/${categoryId}`, {
+    // Persist selection globally
+    localStorage.setItem("selected_options", JSON.stringify(selectedOptions));
+
+    navigate(`/farmer/production/unit-details/${practiceId}/${categoryId}`, {
       state: { selectedOptions }
     });
   };
@@ -72,16 +85,21 @@ export default function SelectPracticeOptions() {
 
     const customId = `custom_${customName.toLowerCase().replace(/\s+/g, "_")}`;
 
+    const newOption = {
+      id: customId,
+      name: customName,
+      img: "https://images.unsplash.com/photo-1589927986089-35812388d1f4"
+    };
+
+    // Extend options safely (do NOT mutate original OPTION_MAP)
+    setOptions((prev) => [...prev, newOption]);
+
     setSelectedOptions((prev) => [...prev, customId]);
 
-    OPTION_MAP[categoryId] = [
-      ...(OPTION_MAP[categoryId] || []),
-      {
-        id: customId,
-        name: customName,
-        img: "https://images.unsplash.com/photo-1589927986089-35812388d1f4" // placeholder image
-      }
-    ];
+    // Save custom for next steps
+    const stored = JSON.parse(localStorage.getItem("custom_options") || "{}");
+    stored[categoryId] = [...(stored[categoryId] || []), newOption];
+    localStorage.setItem("custom_options", JSON.stringify(stored));
 
     setCustomName("");
     setShowCustomModal(false);
@@ -89,21 +107,37 @@ export default function SelectPracticeOptions() {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Select {categoryId} Options</h1>
 
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
+
+        <h1 className="text-3xl font-bold">Select Options</h1>
+      </div>
+
+      {/* Options Grid */}
       <div className="grid md:grid-cols-3 gap-6">
         {options.map((opt) => (
           <div
             key={opt.id}
             onClick={() => toggleSelection(opt.id)}
-            className={`cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition ${
+            className={`cursor-pointer rounded-xl overflow-hidden shadow-lg transition ${
               selectedOptions.includes(opt.id)
                 ? "ring-4 ring-green-500"
-                : "hover:-translate-y-1"
-            }`}
+                : "hover:shadow-2xl hover:-translate-y-1"
+            } bg-white`}
           >
-            <div className="h-40 w-full">
-              <img src={opt.img} alt={opt.name} className="w-full h-full object-cover" />
+            <div className="h-40 w-full overflow-hidden">
+              <img
+                src={opt.img}
+                alt={opt.name}
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+              />
             </div>
 
             <div className="p-4">
@@ -112,7 +146,7 @@ export default function SelectPracticeOptions() {
           </div>
         ))}
 
-        {/* Custom Option Card */}
+        {/* Add Custom Option */}
         <div
           onClick={() => setShowCustomModal(true)}
           className="cursor-pointer rounded-xl flex flex-col justify-center items-center bg-gray-100 hover:bg-gray-200 shadow p-6 text-center"
@@ -122,7 +156,7 @@ export default function SelectPracticeOptions() {
         </div>
       </div>
 
-      {/* Next Button */}
+      {/* Next button */}
       <div className="mt-6">
         <button
           onClick={handleNext}
@@ -132,7 +166,7 @@ export default function SelectPracticeOptions() {
         </button>
       </div>
 
-      {/* Custom Modal */}
+      {/* Custom Option Modal */}
       {showCustomModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-xl shadow-lg w-80">
@@ -158,6 +192,7 @@ export default function SelectPracticeOptions() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

@@ -1,32 +1,23 @@
+# backend/app/crud/farmer/units.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from typing import Optional, List, Tuple
 from uuid import UUID
-
-from app.models.production import (
-    ProductionUnit,
-    UnitStage,
-    UnitTask,
-    UnitOption,
-)
-
-from app.schemas.production import (
-    ProductionUnitCreate,
-    TaskUpdate,
-)
-
 import datetime
 
+from backend.app.models.farmer.production import ProductionUnit, UnitStage, UnitTask, UnitOption
+from backend.app.schemas.farmer.production import ProductionUnitCreate
 
-# ============================================================
-# HELPERS
-# ============================================================
+# NOTE: functions preserve original semantics from production.py
 
-async def compute_unit_progress(unit_id: str, db: AsyncSession) -> tuple[int, str, str]:
+
+async def compute_unit_progress(unit_id: str, db: AsyncSession) -> Tuple[int, Optional[str], str]:
     """
     Computes:
     - overall progress %
     - next task name
     - health status
+    (Preserves previous logic)
     """
     stages = await db.scalars(select(UnitStage).where(UnitStage.unit_id == unit_id))
     stages = stages.all()
@@ -39,14 +30,14 @@ async def compute_unit_progress(unit_id: str, db: AsyncSession) -> tuple[int, st
     if not tasks:
         return 0, None, "warning"
 
-    completed = sum(1 for t in tasks if t.completed)
+    completed = sum(1 for t in tasks if getattr(t, "completed", False))
     total = len(tasks)
 
-    progress = int((completed / total) * 100)
+    progress = int((completed / total) * 100) if total > 0 else 0
 
     pending = sorted(
-        [t for t in tasks if not t.completed],
-        key=lambda x: (x.stage_id, x.order),
+        [t for t in tasks if not getattr(t, "completed", False)],
+        key=lambda x: (x.stage_id, getattr(x, "order", 0)),
     )
 
     next_task = pending[0].title if pending else None
@@ -61,11 +52,10 @@ async def compute_unit_progress(unit_id: str, db: AsyncSession) -> tuple[int, st
     return progress, next_task, health
 
 
-# ============================================================
-# CREATE PRODUCTION UNIT
-# ============================================================
-
 async def create_production_unit(user_id: str, payload: ProductionUnitCreate, db: AsyncSession):
+    """
+    Create a ProductionUnit with options, stages and tasks (same behavior as old function).
+    """
     unit = ProductionUnit(
         user_id=user_id,
         name=payload.name,
@@ -76,7 +66,7 @@ async def create_production_unit(user_id: str, payload: ProductionUnitCreate, db
     )
 
     db.add(unit)
-    await db.flush()  # ensures `unit.id` is generated
+    await db.flush()  # ensure unit.id populated
 
     # Create options
     for opt in payload.options or []:
@@ -102,20 +92,16 @@ async def create_production_unit(user_id: str, payload: ProductionUnitCreate, db
                 stage_id=stage.id,
                 title=t.title,
                 order=t.order,
-                completed=t.completed,
-                priority=t.priority,
-                due_date=t.due_date,
-                assigned_to=t.assigned_to,
+                completed=getattr(t, "completed", False),
+                priority=getattr(t, "priority", None),
+                due_date=getattr(t, "due_date", None),
+                assigned_to=getattr(t, "assigned_to", None),
             )
             db.add(task)
 
     await db.commit()
     return unit
 
-
-# ============================================================
-# GET FULL UNIT DETAILS
-# ============================================================
 
 async def get_production_unit(unit_id: str, db: AsyncSession):
     unit = await db.get(ProductionUnit, unit_id)
@@ -135,10 +121,6 @@ async def get_production_unit(unit_id: str, db: AsyncSession):
 
     return unit
 
-
-# ============================================================
-# LIST UNITS FOR DASHBOARD
-# ============================================================
 
 async def list_units_for_dashboard(user_id: str, db: AsyncSession):
     units = await db.scalars(select(ProductionUnit).where(ProductionUnit.user_id == user_id))
@@ -161,10 +143,6 @@ async def list_units_for_dashboard(user_id: str, db: AsyncSession):
     return results
 
 
-# ============================================================
-# DASHBOARD SUMMARY
-# ============================================================
-
 async def dashboard_summary(user_id: str, db: AsyncSession):
     units = await db.scalars(select(ProductionUnit).where(ProductionUnit.user_id == user_id))
     units = units.all()
@@ -182,39 +160,13 @@ async def dashboard_summary(user_id: str, db: AsyncSession):
             ts = await db.scalars(select(UnitTask).where(UnitTask.stage_id == stage.id))
             tasks = ts.all()
             total_tasks += len(tasks)
-
-            upcoming_tasks += len([t for t in tasks if not t.completed][:7])
+            upcoming_tasks += len([t for t in tasks if not getattr(t, "completed", False)][:7])
 
     return {
         "total_units": total_units,
         "active_units": active_units,
         "upcoming_tasks": upcoming_tasks,
-        "overdue_tasks": 0,     # will be implemented later
-        "total_expenses": 0.0,  # future feature
-        "profit_index": 0.0,    # placeholder
+        "overdue_tasks": 0.0,     # reserved
+        "total_expenses": 0.0,    # reserved
+        "profit_index": 0.0,      # reserved
     }
-
-
-# ============================================================
-# UPDATE A TASK
-# ============================================================
-
-async def update_task(task_id: str, payload: TaskUpdate, db: AsyncSession):
-    task = await db.get(UnitTask, task_id)
-    if not task:
-        return None
-
-    if payload.completed is not None:
-        task.completed = payload.completed
-        if payload.completed:
-            task.completed_at = datetime.datetime.utcnow()
-
-    if payload.priority is not None:
-        task.priority = payload.priority
-
-    if payload.due_date is not None:
-        task.due_date = payload.due_date
-
-    await db.commit()
-    await db.refresh(task)
-    return task

@@ -1,5 +1,5 @@
 // src/pages/farmer/ProductionUnits/UnitDetailsForm.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
 
@@ -9,30 +9,42 @@ export default function UnitDetailsForm() {
   const location = useLocation();
   const { supabaseUser } = useUser();
 
-  const selectedOptions = location.state?.selectedOptions || [];
+  // Restore options from navigation *or* localStorage
+  const selectedOptions =
+    location.state?.selectedOptions ||
+    JSON.parse(localStorage.getItem("selected_options") || "[]");
+
+  // Load saved metadata if returning to this screen
+  const savedMetadata =
+    JSON.parse(localStorage.getItem("unit_metadata") || "null") || {};
 
   const [form, setForm] = useState({
-    name: "",
-    area: "",
-    soil_type: "",
-    irrigation: "",
-    animals: "",
-    shed_size: "",
-    feeding: "",
-    pond_size: "",
-    water_source: "",
-    stocking_density: ""
+    name: savedMetadata.name || "",
+    area: savedMetadata.area || "",
+    soil_type: savedMetadata.soil_type || "",
+    irrigation: savedMetadata.irrigation || "",
+    animals: savedMetadata.animals || "",
+    shed_size: savedMetadata.shed_size || "",
+    feeding: savedMetadata.feeding || "",
+    pond_size: savedMetadata.pond_size || "",
+    water_source: savedMetadata.water_source || "",
+    stocking_density: savedMetadata.stocking_density || ""
   });
 
-  const handleChange = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+  // Save metadata persistently
+  useEffect(() => {
+    localStorage.setItem("unit_metadata", JSON.stringify(form));
+  }, [form]);
 
-  // Minimal fields depending on practice
+  const handleChange = (key, value) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  /** ------------------- FIELDS PER PRACTICE ------------------- **/
+
   const renderCropFields = () => (
     <>
       <InputField label="Production Unit Name" id="name" value={form.name} onChange={handleChange} />
-      <InputField label="Field Area (in acres)" id="area" value={form.area} onChange={handleChange} />
+      <InputField label="Field Area (acres)" id="area" value={form.area} onChange={handleChange} />
       <InputField label="Soil Type" id="soil_type" value={form.soil_type} onChange={handleChange} />
       <InputField label="Irrigation Method" id="irrigation" value={form.irrigation} onChange={handleChange} />
     </>
@@ -74,39 +86,71 @@ export default function UnitDetailsForm() {
     }
   };
 
+  /** ------------------- VALIDATION ------------------- **/
+
+  useEffect(() => {
+    if (!selectedOptions || selectedOptions.length === 0) {
+      navigate(`/farmer/production/select-options/${practiceId}/${categoryId}`);
+    }
+  }, [selectedOptions, practiceId, categoryId, navigate]);
+
   const handleNext = () => {
     if (!supabaseUser?.id) {
       alert("Please log in.");
       return;
     }
-    if (!form.name || form.name.trim().length === 0) {
-      alert("Please provide a name for the production unit.");
+    if (!form.name.trim()) {
+      alert("Production unit name is required.");
       return;
     }
 
-    // Navigate to Stage Template Editor with the collected data
+    // Prepare data for next step
+    const metadata = { ...form };
+    localStorage.setItem("unit_metadata", JSON.stringify(metadata));
+
     navigate(`/farmer/production/stages`, {
       state: {
         practiceId,
         categoryId,
         selectedOptions,
-        metadata: form
+        metadata
       }
     });
   };
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-bold mb-4">Production Unit Details</h1>
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-4">
+        <button
+          className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
+        <h1 className="text-3xl font-bold">Production Unit Details</h1>
+      </div>
 
-      <p className="mb-4 text-gray-600">Selected Items: <strong>{selectedOptions.join(", ") || "-"}</strong></p>
+      {/* Selected Options */}
+      <p className="mb-4 text-gray-600">
+        <strong>Selected Options:</strong>{" "}
+        {selectedOptions.join(", ") || "-"}
+      </p>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">{renderFields()}</div>
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        {renderFields()}
+      </div>
 
+      {/* Footer buttons */}
       <div className="mt-6 flex gap-3">
-        <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">Back</button>
-        <button onClick={handleNext} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-          Next: Review Stages
+        <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">
+          Back
+        </button>
+        <button
+          onClick={handleNext}
+          className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        >
+          Next: Review Stages →
         </button>
       </div>
     </div>

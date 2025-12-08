@@ -1,12 +1,12 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
-// Temporary hardcoded practices (later moved to backend)
+// Temporary hardcoded practices — will be backend-powered later
 const PRACTICES = [
   {
     id: "crop",
     name: "Crop Farming",
-    img: "https://images.unsplash.com/photo-1599058917212-d750089bc07a", // paddy field
+    img: "https://images.unsplash.com/photo-1599058917212-d750089bc07a",
     description: "Cultivate cereals, pulses, oilseeds, millets and more."
   },
   {
@@ -51,7 +51,10 @@ export default function CreateProductionUnit() {
   const navigate = useNavigate();
 
   const handleSelect = (practiceId) => {
-    navigate(`/production/select-category/${practiceId}`);
+    // Save selected practice globally for the wizard
+    localStorage.setItem("selected_practice", practiceId);
+
+    navigate(`/farmer/production/select-category/${practiceId}`);
   };
 
   return (
@@ -63,19 +66,23 @@ export default function CreateProductionUnit() {
           <div
             key={p.id}
             onClick={() => handleSelect(p.id)}
-            className="cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1 bg-white"
+            className="cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1 bg-white border border-gray-200"
           >
             <div className="h-40 w-full overflow-hidden">
               <img
                 src={p.img}
                 alt={p.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
               />
             </div>
 
             <div className="p-4">
               <h2 className="text-xl font-semibold">{p.name}</h2>
               <p className="text-gray-600 text-sm mt-2">{p.description}</p>
+
+              <button className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                Select
+              </button>
             </div>
           </div>
         ))}

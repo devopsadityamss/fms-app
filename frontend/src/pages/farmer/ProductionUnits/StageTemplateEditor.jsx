@@ -1,14 +1,11 @@
 // src/pages/farmer/ProductionUnits/StageTemplateEditor.jsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api } from "../../../../services/api";
+import { api } from "../../../services/api";            // FIXED PATH
+import { useUser } from "../../../context/UserContext"; // REQUIRED FOR user_id
 import { v4 as uuidv4 } from "uuid";
 
-/**
- * FRONTEND TEMPLATE LIBRARY (MVP hardcoded)
- * Each option maps to a list of stages (stages contain default tasks).
- * Later these will be moved to backend.
- */
+/* ---------- TEMPLATE_LIBRARY stays unchanged ---------- */
 const TEMPLATE_LIBRARY = {
   rice: [
     { title: "Soil Test", tasks: ["Collect sample", "Send sample to lab", "Apply recommendation"] },
@@ -46,12 +43,7 @@ const TEMPLATE_LIBRARY = {
   ]
 };
 
-/**
- * Merge algorithm:
- * - Collect stage titles from all templates in order they appear
- * - If a stage title already exists (case-insensitive), merge tasks (unique)
- * - Keep order based on first occurrence
- */
+/* ---------- Merge Logic stays unchanged ---------- */
 function mergeTemplates(optionIds) {
   const merged = [];
   const seen = new Map();
@@ -69,7 +61,6 @@ function mergeTemplates(optionIds) {
         merged.push(copy);
         seen.set(key, copy);
       } else {
-        // merge tasks
         const existing = seen.get(key);
         (stage.tasks || []).forEach((t) => {
           if (!existing.tasks.find((et) => et.title === t)) {
@@ -83,22 +74,28 @@ function mergeTemplates(optionIds) {
   return merged;
 }
 
+/* ============================================================
+   COMPONENT START
+   ============================================================ */
 export default function StageTemplateEditor() {
-  const loc = useLocation();
   const navigate = useNavigate();
-  const state = loc.state || {};
-  const { practiceId, categoryId, selectedOptions = [], metadata = {} } = state;
+  const loc = useLocation();
+  const { supabaseUser } = useUser();        // REQUIRED FOR user_id
+
+  const { practiceId, categoryId, selectedOptions = [], metadata = {} } =
+    loc.state || {};
 
   const [stages, setStages] = useState([]);
   const [saving, setSaving] = useState(false);
 
+  // Merge templates into editable stage list
   useEffect(() => {
-    // merge templates for selected options
     const merged = mergeTemplates(selectedOptions);
     setStages(merged);
   }, [selectedOptions]);
 
-  // UI helpers
+  /* -------------------- Stage & Task helpers --------------------- */
+
   const addStage = () => {
     setStages((s) => [...s, { id: uuidv4(), title: "New Stage", tasks: [] }]);
   };
@@ -110,10 +107,10 @@ export default function StageTemplateEditor() {
   const moveStage = (index, dir) => {
     setStages((prev) => {
       const arr = [...prev];
-      const target = arr[index + dir];
-      if (!target) return prev;
-      arr[index + dir] = arr[index];
-      arr[index] = target;
+      if (!arr[index + dir]) return prev;
+      const temp = arr[index];
+      arr[index] = arr[index + dir];
+      arr[index + dir] = temp;
       return arr;
     });
   };
@@ -122,11 +119,12 @@ export default function StageTemplateEditor() {
     setStages((prev) => prev.map((st) => (st.id === id ? { ...st, title } : st)));
   };
 
-  // tasks
   const addTask = (stageId) => {
     setStages((prev) =>
       prev.map((st) =>
-        st.id === stageId ? { ...st, tasks: [...st.tasks, { id: uuidv4(), title: "New task" }] } : st
+        st.id === stageId
+          ? { ...st, tasks: [...st.tasks, { id: uuidv4(), title: "New task" }] }
+          : st
       )
     );
   };
@@ -134,52 +132,76 @@ export default function StageTemplateEditor() {
   const updateTaskTitle = (stageId, taskId, title) => {
     setStages((prev) =>
       prev.map((st) =>
-        st.id === stageId ? { ...st, tasks: st.tasks.map((t) => (t.id === taskId ? { ...t, title } : t)) } : st
+        st.id === stageId
+          ? {
+              ...st,
+              tasks: st.tasks.map((t) => (t.id === taskId ? { ...t, title } : t))
+            }
+          : st
       )
     );
   };
 
   const removeTask = (stageId, taskId) => {
-    setStages((prev) => prev.map((st) => (st.id === stageId ? { ...st, tasks: st.tasks.filter((t) => t.id !== taskId) } : st)));
+    setStages((prev) =>
+      prev.map((st) =>
+        st.id === stageId
+          ? { ...st, tasks: st.tasks.filter((t) => t.id !== taskId) }
+          : st
+      )
+    );
   };
 
-  // Final save — create Production Unit via API
+  /* -------------------- FINAL SAVE --------------------- */
+
   const handleSave = async () => {
+    if (!supabaseUser?.id) {
+      alert("Please login first.");
+      return;
+    }
+
     setSaving(true);
+
     try {
       const payload = {
-        user_id: metadata.user_id || null, // backend will check auth — but we include if present
+        user_id: supabaseUser.id, // FIXED
         practice_type: practiceId,
         category: categoryId,
         name: metadata.name,
-        items: selectedOptions,
-        metadata,
+        items: selectedOptions,   // backend normalizes this
+        meta: JSON.stringify(metadata), // FIXED: must be JSON string
         stages: stages.map((s, idx) => ({
           title: s.title,
           order: idx + 1,
-          tasks: s.tasks.map((t, j) => ({ title: t.title, order: j + 1 }))
+          tasks: s.tasks.map((t, j) => ({
+            title: t.title,
+            order: j + 1
+          }))
         }))
       };
 
       const res = await api.post("/farmer/production-unit/create", payload);
-      // res.data should include created unit id
-      const unitId = res.data?.id;
-      alert("Production unit created successfully");
+      const unitId = res?.data?.id;
+
+      alert("Production Unit Created Successfully!");
       navigate(`/farmer/production/unit/${unitId}`, { replace: true });
-    } catch (e) {
-      console.error(e);
-      alert("Failed to create production unit");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create production unit.");
     } finally {
       setSaving(false);
     }
   };
 
-  if (!selectedOptions || selectedOptions.length === 0) {
+  /* -------------------- Render --------------------- */
+
+  if (!selectedOptions.length) {
     return (
       <div className="p-8">
         <h2 className="text-xl font-semibold">No options selected</h2>
-        <p>Please go back and select at least one crop/animal.</p>
-        <button className="mt-4 px-4 py-2 bg-gray-200 rounded" onClick={() => navigate(-1)}>Back</button>
+        <button onClick={() => navigate(-1)} className="mt-4 px-4 py-2 bg-gray-200 rounded">
+          Back
+        </button>
       </div>
     );
   }
@@ -189,55 +211,68 @@ export default function StageTemplateEditor() {
       <h1 className="text-2xl font-bold mb-4">Review & Edit Stages</h1>
       <p className="mb-4 text-gray-600">Production Unit: <strong>{metadata.name}</strong></p>
 
-      <div className="mb-4">
-        <button onClick={addStage} className="px-3 py-1 bg-blue-600 text-white rounded">Add Stage</button>
-      </div>
+      <button onClick={addStage} className="px-3 py-1 bg-blue-600 text-white rounded mb-4">
+        Add Stage
+      </button>
 
       <div className="space-y-4">
         {stages.map((stage, idx) => (
           <div key={stage.id} className="bg-white p-4 rounded shadow">
-            <div className="flex items-center justify-between">
+            <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="text-sm text-gray-500">#{idx + 1}</div>
+                <div className="text-gray-500">#{idx + 1}</div>
                 <input
                   value={stage.title}
                   onChange={(e) => updateStageTitle(stage.id, e.target.value)}
-                  className="text-lg font-semibold border-b px-2 py-1"
+                  className="text-lg border-b px-2"
                 />
-                <div className="text-sm text-gray-400 ml-2">{stage.tasks.length} tasks</div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button onClick={() => moveStage(idx, -1)} className="px-2 py-1 bg-gray-100 rounded">↑</button>
-                <button onClick={() => moveStage(idx, 1)} className="px-2 py-1 bg-gray-100 rounded">↓</button>
-                <button onClick={() => removeStage(stage.id)} className="px-2 py-1 bg-red-100 text-red-700 rounded">Delete</button>
+              <div className="flex gap-2">
+                <button onClick={() => moveStage(idx, -1)} className="px-2 py-1 bg-gray-100 rounded">Up</button>
+                <button onClick={() => moveStage(idx, 1)} className="px-2 py-1 bg-gray-100 rounded">Down</button>
+                <button
+                  onClick={() => removeStage(stage.id)}
+                  className="px-2 py-1 bg-red-100 text-red-600 rounded"
+                >
+                  Delete
+                </button>
               </div>
             </div>
 
             {/* Tasks */}
             <div className="mt-3 space-y-2">
-              {stage.tasks.map((t) => (
-                <div key={t.id} className="flex items-center gap-2">
+              {stage.tasks.map((task) => (
+                <div key={task.id} className="flex gap-2 items-center">
                   <input
-                    value={t.title}
-                    onChange={(e) => updateTaskTitle(stage.id, t.id, e.target.value)}
+                    value={task.title}
+                    onChange={(e) => updateTaskTitle(stage.id, task.id, e.target.value)}
                     className="flex-1 border p-2 rounded"
                   />
-                  <button onClick={() => removeTask(stage.id, t.id)} className="px-2 py-1 bg-red-100 text-red-700 rounded">Remove</button>
+                  <button
+                    onClick={() => removeTask(stage.id, task.id)}
+                    className="px-2 py-1 bg-red-100 text-red-600 rounded"
+                  >
+                    Remove
+                  </button>
                 </div>
               ))}
-
-              <div>
-                <button onClick={() => addTask(stage.id)} className="mt-2 px-3 py-1 bg-green-600 text-white rounded">+ Add Task</button>
-              </div>
+              <button onClick={() => addTask(stage.id)} className="mt-2 px-3 py-1 bg-green-600 text-white rounded">
+                + Add Task
+              </button>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Footer */}
       <div className="mt-6 flex gap-3">
         <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">Back</button>
-        <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-emerald-600 text-white rounded">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="px-6 py-2 bg-emerald-600 text-white rounded"
+        >
           {saving ? "Saving..." : "Save Production Unit"}
         </button>
       </div>

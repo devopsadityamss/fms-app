@@ -4,8 +4,8 @@ import uuid
 from datetime import datetime, timedelta
 
 from app.core.database import async_session_maker
-from app.schemas.production import ProductionUnitCreate, StageCreate, TaskCreate, UnitOptionCreate
-from app.crud.production import create_production_unit
+from backend.app.schemas.farmer.production import ProductionUnitCreate, StageCreate, TaskCreate, UnitOptionCreate
+from backend.app.crud.farmer.production import create_production_unit
 
 # ------------------------------------------------------------
 # CONFIG

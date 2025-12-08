@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-// Hardcoded categories per practice (MVP)
+// Hardcoded categories per practice (MVP) - will come from backend later
 const CATEGORY_MAP = {
   crop: [
     { id: "cereals", name: "Cereals", img: "https://images.unsplash.com/photo-1500937386664-56e04c0b56d9" },
@@ -45,31 +45,56 @@ export default function SelectPracticeCategory() {
 
   const categories = CATEGORY_MAP[practiceId] || [];
 
+  // Redirect if practiceId is invalid (ensures stable flow)
+  useEffect(() => {
+    if (!CATEGORY_MAP[practiceId]) {
+      navigate("/farmer/production/create");
+    }
+  }, [practiceId, navigate]);
+
   const handleSelect = (categoryId) => {
-    navigate(`/production/select-options/${practiceId}/${categoryId}`);
+    // Persist selected category for next steps
+    localStorage.setItem("selected_category", categoryId);
+
+    navigate(`/farmer/production/select-options/${practiceId}/${categoryId}`);
   };
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-6">Choose Category</h1>
+
+      {/* Header with back button */}
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
+
+        <h1 className="text-3xl font-bold">Choose Category</h1>
+      </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {categories.map((cat) => (
           <div
             key={cat.id}
             onClick={() => handleSelect(cat.id)}
-            className="cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1 bg-white"
+            className="cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1 bg-white border border-gray-200"
           >
             <div className="h-40 w-full overflow-hidden">
               <img
                 src={cat.img}
                 alt={cat.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
               />
             </div>
 
             <div className="p-4">
               <h2 className="text-xl font-semibold">{cat.name}</h2>
+
+              <button className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
+                Select
+              </button>
             </div>
           </div>
         ))}

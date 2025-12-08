@@ -7,22 +7,23 @@ export default function DashboardRouter() {
   const { activeRole } = useUser();
 
   if (!activeRole) {
-    // still loading or no role set
     return <div className="p-6">Loading dashboard...</div>;
   }
 
-  switch ((activeRole || "").toLowerCase()) {
+  const role = activeRole.toLowerCase();
+
+  switch (role) {
     case "admin":
-      return <Navigate to="/admin" replace />;
+      return <Navigate to="/admin/dashboard" replace />;
 
     case "farmer":
-      return <Navigate to="/farmer" replace />;
+      return <Navigate to="/farmer/dashboard" replace />;
 
     case "worker":
-      return <Navigate to="/worker" replace />;
+      return <Navigate to="/worker/dashboard" replace />;
 
     case "trader":
-      return <Navigate to="/trader" replace />;
+      return <Navigate to="/trader/dashboard" replace />;
 
     default:
       return <div className="p-6">Unknown role: {activeRole}</div>;
