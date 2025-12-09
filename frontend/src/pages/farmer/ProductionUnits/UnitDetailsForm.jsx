@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useUser } from "../../../context/UserContext";
+import toast from "react-hot-toast";
 
 export default function UnitDetailsForm() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export default function UnitDetailsForm() {
     location.state?.selectedOptions ||
     JSON.parse(localStorage.getItem("selected_options") || "[]");
 
-  // Load saved metadata if returning to this screen
+  // Load saved metadata if returning later
   const savedMetadata =
     JSON.parse(localStorage.getItem("unit_metadata") || "null") || {};
 
@@ -31,7 +32,9 @@ export default function UnitDetailsForm() {
     stocking_density: savedMetadata.stocking_density || ""
   });
 
-  // Save metadata persistently
+  const [loadingNext, setLoadingNext] = useState(false);
+
+  // Persist metadata continuously
   useEffect(() => {
     localStorage.setItem("unit_metadata", JSON.stringify(form));
   }, [form]);
@@ -94,32 +97,54 @@ export default function UnitDetailsForm() {
     }
   }, [selectedOptions, practiceId, categoryId, navigate]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!supabaseUser?.id) {
-      alert("Please log in.");
+      toast.error("Please log in.");
       return;
     }
     if (!form.name.trim()) {
-      alert("Production unit name is required.");
+      toast.error("Production unit name is required.");
+      return;
+    }
+    if (!selectedOptions.length) {
+      toast.error("Please select at least one practice option.");
       return;
     }
 
-    // Prepare data for next step
-    const metadata = { ...form };
-    localStorage.setItem("unit_metadata", JSON.stringify(metadata));
+    let t;
+    try {
+      setLoadingNext(true);
+      t = toast.loading("Saving details...");
 
-    navigate(`/farmer/production/stages`, {
-      state: {
-        practiceId,
-        categoryId,
-        selectedOptions,
-        metadata
-      }
-    });
+      const metadata = { ...form };
+
+      // Save metadata
+      localStorage.setItem("unit_metadata", JSON.stringify(metadata));
+
+      toast.dismiss(t);
+      toast.success("Details saved!");
+
+      navigate(`/farmer/production/stages`, {
+        state: {
+          practiceId,
+          categoryId,
+          selectedOptions,
+          metadata
+        }
+      });
+
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error("Failed to save details.");
+      console.error("Unit details error:", err);
+    } finally {
+      setLoadingNext(false);
+    }
   };
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
+
       {/* Header */}
       <div className="flex items-center gap-4 mb-4">
         <button
@@ -133,30 +158,33 @@ export default function UnitDetailsForm() {
 
       {/* Selected Options */}
       <p className="mb-4 text-gray-600">
-        <strong>Selected Options:</strong>{" "}
-        {selectedOptions.join(", ") || "-"}
+        <strong>Selected Options:</strong> {selectedOptions.join(", ") || "-"}
       </p>
 
+      {/* Form Container */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         {renderFields()}
       </div>
 
-      {/* Footer buttons */}
+      {/* Footer */}
       <div className="mt-6 flex gap-3">
         <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">
           Back
         </button>
+
         <button
           onClick={handleNext}
-          className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+          disabled={loadingNext}
+          className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
         >
-          Next: Review Stages →
+          {loadingNext ? "Saving..." : "Next: Review Stages →"}
         </button>
       </div>
     </div>
   );
 }
 
+/* ---------- Reusable Input Component ---------- */
 function InputField({ label, id, value, onChange }) {
   return (
     <div className="mb-4">

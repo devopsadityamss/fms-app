@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../../../../services/api";
+import toast from "react-hot-toast";
 
 export default function ProductionUnitView() {
   const { id } = useParams();
@@ -13,11 +14,15 @@ export default function ProductionUnitView() {
   const loadUnit = async () => {
     try {
       setLoading(true);
+
       const res = await api.get(`/farmer/production-unit/${id}`);
-      setUnit(res.data);
+
+      // ⭐ FIX — backend returns { ok, data }
+      setUnit(res.data?.data || null);
+
     } catch (err) {
-      console.error(err);
-      alert("Failed to load production unit");
+      console.error("Load unit error:", err);
+      toast.error("Failed to load production unit");
     } finally {
       setLoading(false);
     }
@@ -29,15 +34,23 @@ export default function ProductionUnitView() {
 
   // ---------------- UPDATE TASK COMPLETION ----------------
   const toggleTaskCompletion = async (task) => {
+    const toastId = toast.loading("Updating task...");
+
     try {
       await api.put(`/farmer/production-unit/task/${task.id}`, {
         completed: !task.completed,
       });
 
-      await loadUnit(); // refresh after update (backend recalculates progress)
+      toast.dismiss(toastId);
+      toast.success(
+        !task.completed ? "Task marked completed!" : "Task marked incomplete"
+      );
+
+      await loadUnit(); // refresh from backend
     } catch (err) {
-      console.error(err);
-      alert("Failed to update task");
+      console.error("Task update failed:", err);
+      toast.dismiss(toastId);
+      toast.error("Failed to update task");
     }
   };
 
@@ -62,13 +75,15 @@ export default function ProductionUnitView() {
 
           <div className="mt-1 text-sm">
             <span className="font-semibold">Health:</span>{" "}
-            <span className={
-              unit.health_status === "excellent"
-                ? "text-green-600"
-                : unit.health_status === "warning"
-                ? "text-yellow-600"
-                : "text-red-600"
-            }>
+            <span
+              className={
+                unit.health_status === "excellent"
+                  ? "text-green-600"
+                  : unit.health_status === "warning"
+                  ? "text-yellow-600"
+                  : "text-red-600"
+              }
+            >
               {unit.health_status}
             </span>
           </div>
@@ -86,6 +101,7 @@ export default function ProductionUnitView() {
       <div className="space-y-4">
         {unit.stages.map((s, idx) => (
           <div key={s.id} className="bg-white p-4 rounded shadow">
+
             {/* Stage Header */}
             <div className="flex items-center justify-between">
               <div>
@@ -105,24 +121,15 @@ export default function ProductionUnitView() {
             {/* Task List */}
             <ul className="mt-3 space-y-2">
               {s.tasks.map((t) => (
-                <li
-                  key={t.id}
-                  className="flex items-center gap-3 text-sm"
-                >
+                <li key={t.id} className="flex items-center gap-3 text-sm">
                   <input
                     type="checkbox"
                     checked={t.completed}
                     onChange={() => toggleTaskCompletion(t)}
-                    className="w-4 h-4"
+                    className="w-4 h-4 cursor-pointer"
                   />
 
-                  <span
-                    className={
-                      t.completed
-                        ? "line-through text-green-700"
-                        : "text-gray-800"
-                    }
-                  >
+                  <span className={t.completed ? "line-through text-green-700" : "text-gray-800"}>
                     {t.title}
                   </span>
 
@@ -132,6 +139,7 @@ export default function ProductionUnitView() {
                 </li>
               ))}
             </ul>
+
           </div>
         ))}
       </div>

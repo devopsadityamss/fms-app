@@ -9,6 +9,7 @@ from backend.app.schemas.farmer.task import TaskCreate, TaskUpdate, TaskOut
 from backend.app.crud.farmer import tasks as crud_tasks
 from backend.app.services.farmer import task_service
 
+
 router = APIRouter(prefix="/tasks", tags=["farmer-tasks"])
 
 
@@ -43,3 +44,31 @@ async def delete_task(task_id: str, db: AsyncSession = Depends(get_db)):
     if not result:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"ok": True, "deleted": task_id}
+
+
+
+# ============================================================
+# ⭐ NEW ENDPOINT — MARK TASK COMPLETE
+# ============================================================
+
+@router.post("/{task_id}/complete")
+async def complete_task(task_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Marks task as completed and creates an operation log.
+    Works even though service layer is synchronous.
+    """
+
+    # run the sync service inside AsyncSession
+    def _complete(sync_session):
+        return task_service.mark_task_complete(sync_session, task_id, None)
+
+    task, op_log = await db.run_sync(_complete)
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return {
+        "task_id": task_id,
+        "completed": True,
+        "operation_log_id": str(op_log.id) if op_log else None
+    }

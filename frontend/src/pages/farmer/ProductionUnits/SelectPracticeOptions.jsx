@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
 // Hardcoded options for MVP — backend later
 const OPTION_MAP = {
@@ -47,16 +48,30 @@ export default function SelectPracticeOptions() {
   const baseOptions = OPTION_MAP[categoryId] || [];
   const [options, setOptions] = useState(baseOptions);
 
-  const [selectedOptions, setSelectedOptions] = useState([]);
+  const [selectedOptions, setSelectedOptions] = useState(
+    JSON.parse(localStorage.getItem("selected_options") || "[]")
+  );
+
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [customName, setCustomName] = useState("");
 
-  // Redirect if category or practice invalid
+  const [loadingNext, setLoadingNext] = useState(false);
+  const [loadingCustom, setLoadingCustom] = useState(false);
+
+  // Redirect if invalid category
   useEffect(() => {
     if (!OPTION_MAP[categoryId]) {
       navigate(`/farmer/production/select-category/${practiceId}`);
     }
   }, [categoryId, navigate, practiceId]);
+
+  // Load any previously saved custom options for this category
+  useEffect(() => {
+    const stored = JSON.parse(localStorage.getItem("custom_options") || "{}");
+    if (stored[categoryId]) {
+      setOptions([...baseOptions, ...stored[categoryId]]);
+    }
+  }, [categoryId]);
 
   const toggleSelection = (id) => {
     setSelectedOptions((prev) =>
@@ -66,43 +81,82 @@ export default function SelectPracticeOptions() {
     );
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (selectedOptions.length === 0) {
-      alert("Please select at least one option.");
+      toast.error("Please select at least one option.");
       return;
     }
 
-    // Persist selection globally
-    localStorage.setItem("selected_options", JSON.stringify(selectedOptions));
+    let t;
+    try {
+      setLoadingNext(true);
+      t = toast.loading("Saving selection...");
 
-    navigate(`/farmer/production/unit-details/${practiceId}/${categoryId}`, {
-      state: { selectedOptions }
-    });
+      localStorage.setItem("selected_options", JSON.stringify(selectedOptions));
+
+      toast.dismiss(t);
+      toast.success("Options selected!");
+
+      navigate(`/farmer/production/unit-details/${practiceId}/${categoryId}`, {
+        state: { selectedOptions }
+      });
+
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error("Could not proceed.");
+      console.error("Next step error:", err);
+    } finally {
+      setLoadingNext(false);
+    }
   };
 
-  const addCustomOption = () => {
-    if (!customName.trim()) return;
+  const addCustomOption = async () => {
+    if (!customName.trim()) {
+      toast.error("Enter a valid name.");
+      return;
+    }
 
     const customId = `custom_${customName.toLowerCase().replace(/\s+/g, "_")}`;
 
-    const newOption = {
-      id: customId,
-      name: customName,
-      img: "https://images.unsplash.com/photo-1589927986089-35812388d1f4"
-    };
+    // Prevent duplicates
+    if (options.find((o) => o.id === customId)) {
+      toast.error("Option already exists.");
+      return;
+    }
 
-    // Extend options safely (do NOT mutate original OPTION_MAP)
-    setOptions((prev) => [...prev, newOption]);
+    let t;
+    try {
+      setLoadingCustom(true);
+      t = toast.loading("Adding custom option...");
 
-    setSelectedOptions((prev) => [...prev, customId]);
+      const newOption = {
+        id: customId,
+        name: customName.trim(),
+        img: "https://images.unsplash.com/photo-1589927986089-35812388d1f4"
+      };
 
-    // Save custom for next steps
-    const stored = JSON.parse(localStorage.getItem("custom_options") || "{}");
-    stored[categoryId] = [...(stored[categoryId] || []), newOption];
-    localStorage.setItem("custom_options", JSON.stringify(stored));
+      // Add visually
+      setOptions((prev) => [...prev, newOption]);
+      setSelectedOptions((prev) => [...prev, customId]);
 
-    setCustomName("");
-    setShowCustomModal(false);
+      // Save in localStorage
+      const stored = JSON.parse(localStorage.getItem("custom_options") || "{}");
+      stored[categoryId] = [...(stored[categoryId] || []), newOption];
+      localStorage.setItem("custom_options", JSON.stringify(stored));
+
+      setCustomName("");
+      setShowCustomModal(false);
+
+      toast.dismiss(t);
+      toast.success("Custom option added!");
+
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error("Failed to add option.");
+      console.error("Custom option error:", err);
+    } finally {
+      setLoadingCustom(false);
+    }
   };
 
   return (
@@ -160,9 +214,10 @@ export default function SelectPracticeOptions() {
       <div className="mt-6">
         <button
           onClick={handleNext}
-          className="px-6 py-2 bg-green-600 text-white rounded shadow hover:bg-green-700"
+          disabled={loadingNext}
+          className="px-6 py-2 bg-green-600 text-white rounded shadow hover:bg-green-700 disabled:bg-gray-400"
         >
-          Next →
+          {loadingNext ? "Saving..." : "Next →"}
         </button>
       </div>
 
@@ -181,12 +236,19 @@ export default function SelectPracticeOptions() {
             />
 
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowCustomModal(false)}>Cancel</button>
               <button
-                onClick={addCustomOption}
-                className="px-4 py-1 bg-green-600 text-white rounded"
+                onClick={() => !loadingCustom && setShowCustomModal(false)}
+                className="px-4 py-1"
               >
-                Add
+                Cancel
+              </button>
+
+              <button
+                disabled={loadingCustom}
+                onClick={addCustomOption}
+                className="px-4 py-1 bg-green-600 text-white rounded disabled:bg-gray-400"
+              >
+                {loadingCustom ? "Adding..." : "Add"}
               </button>
             </div>
           </div>

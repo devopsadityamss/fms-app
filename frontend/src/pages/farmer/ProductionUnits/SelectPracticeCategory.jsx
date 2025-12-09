@@ -1,7 +1,8 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 
-// Hardcoded categories per practice (MVP) - will come from backend later
+// Hardcoded categories per practice (MVP) - backend later
 const CATEGORY_MAP = {
   crop: [
     { id: "cereals", name: "Cereals", img: "https://images.unsplash.com/photo-1500937386664-56e04c0b56d9" },
@@ -42,10 +43,11 @@ const CATEGORY_MAP = {
 export default function SelectPracticeCategory() {
   const { practiceId } = useParams();
   const navigate = useNavigate();
+  const [loadingCategory, setLoadingCategory] = useState(null);
 
   const categories = CATEGORY_MAP[practiceId] || [];
 
-  // Redirect if practiceId is invalid (ensures stable flow)
+  // Redirect invalid practice
   useEffect(() => {
     if (!CATEGORY_MAP[practiceId]) {
       navigate("/farmer/production/create");
@@ -53,16 +55,33 @@ export default function SelectPracticeCategory() {
   }, [practiceId, navigate]);
 
   const handleSelect = (categoryId) => {
-    // Persist selected category for next steps
-    localStorage.setItem("selected_category", categoryId);
+    if (loadingCategory) return; // Prevent double click race conditions
 
-    navigate(`/farmer/production/select-options/${practiceId}/${categoryId}`);
+    let t;
+    try {
+      setLoadingCategory(categoryId);
+      t = toast.loading("Selecting category...");
+
+      // Persist category
+      localStorage.setItem("selected_category", categoryId);
+
+      toast.dismiss(t);
+      toast.success("Category selected!");
+
+      navigate(`/farmer/production/select-options/${practiceId}/${categoryId}`);
+    } catch (err) {
+      toast.dismiss(t);
+      toast.error("Failed to select category.");
+      console.error("Category select error:", err);
+    } finally {
+      setLoadingCategory(null);
+    }
   };
 
   return (
     <div className="p-8">
 
-      {/* Header with back button */}
+      {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <button
           className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
@@ -74,12 +93,17 @@ export default function SelectPracticeCategory() {
         <h1 className="text-3xl font-bold">Choose Category</h1>
       </div>
 
+      {/* Category Grid */}
       <div className="grid md:grid-cols-3 gap-6">
         {categories.map((cat) => (
           <div
             key={cat.id}
             onClick={() => handleSelect(cat.id)}
-            className="cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1 bg-white border border-gray-200"
+            className={`cursor-pointer rounded-xl overflow-hidden shadow-lg transition bg-white border ${
+              loadingCategory === cat.id
+                ? "opacity-60"
+                : "hover:shadow-2xl hover:-translate-y-1"
+            }`}
           >
             <div className="h-40 w-full overflow-hidden">
               <img
@@ -89,11 +113,14 @@ export default function SelectPracticeCategory() {
               />
             </div>
 
-            <div className="p-4">
+            <div className="p-4 text-center">
               <h2 className="text-xl font-semibold">{cat.name}</h2>
 
-              <button className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                Select
+              <button
+                className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:bg-gray-400"
+                disabled={loadingCategory === cat.id}
+              >
+                {loadingCategory === cat.id ? "Loading..." : "Select"}
               </button>
             </div>
           </div>

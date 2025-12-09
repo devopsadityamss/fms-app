@@ -1,9 +1,10 @@
 // src/pages/farmer/ProductionUnits/StageTemplateEditor.jsx
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api } from "../../../services/api";            // FIXED PATH
-import { useUser } from "../../../context/UserContext"; // REQUIRED FOR user_id
+import { api } from "../../../services/api"; // FIXED PATH
+import { useUser } from "../../../context/UserContext";
 import { v4 as uuidv4 } from "uuid";
+import toast from "react-hot-toast"; // ⭐ ADDED
 
 /* ---------- TEMPLATE_LIBRARY stays unchanged ---------- */
 const TEMPLATE_LIBRARY = {
@@ -80,7 +81,7 @@ function mergeTemplates(optionIds) {
 export default function StageTemplateEditor() {
   const navigate = useNavigate();
   const loc = useLocation();
-  const { supabaseUser } = useUser();        // REQUIRED FOR user_id
+  const { supabaseUser } = useUser();
 
   const { practiceId, categoryId, selectedOptions = [], metadata = {} } =
     loc.state || {};
@@ -88,13 +89,13 @@ export default function StageTemplateEditor() {
   const [stages, setStages] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  // Merge templates into editable stage list
+  // Merge templates into editable list
   useEffect(() => {
     const merged = mergeTemplates(selectedOptions);
     setStages(merged);
   }, [selectedOptions]);
 
-  /* -------------------- Stage & Task helpers --------------------- */
+  /* -------------------- Stage & Task Helpers --------------------- */
 
   const addStage = () => {
     setStages((s) => [...s, { id: uuidv4(), title: "New Stage", tasks: [] }]);
@@ -108,15 +109,17 @@ export default function StageTemplateEditor() {
     setStages((prev) => {
       const arr = [...prev];
       if (!arr[index + dir]) return prev;
-      const temp = arr[index];
+      const tmp = arr[index];
       arr[index] = arr[index + dir];
-      arr[index + dir] = temp;
+      arr[index + dir] = tmp;
       return arr;
     });
   };
 
   const updateStageTitle = (id, title) => {
-    setStages((prev) => prev.map((st) => (st.id === id ? { ...st, title } : st)));
+    setStages((prev) =>
+      prev.map((st) => (st.id === id ? { ...st, title } : st))
+    );
   };
 
   const addTask = (stageId) => {
@@ -155,43 +158,54 @@ export default function StageTemplateEditor() {
   /* -------------------- FINAL SAVE --------------------- */
 
   const handleSave = async () => {
-    if (!supabaseUser?.id) {
-      alert("Please login first.");
-      return;
-    }
+  if (!supabaseUser?.id) {
+    toast.error("Please log in first.");
+    return;
+  }
 
-    setSaving(true);
+  if (!metadata?.name?.trim()) {
+    toast.error("Production unit name missing!");
+    return;
+  }
 
-    try {
-      const payload = {
-        user_id: supabaseUser.id, // FIXED
-        practice_type: practiceId,
-        category: categoryId,
-        name: metadata.name,
-        items: selectedOptions,   // backend normalizes this
-        meta: JSON.stringify(metadata), // FIXED: must be JSON string
-        stages: stages.map((s, idx) => ({
-          title: s.title,
-          order: idx + 1,
-          tasks: s.tasks.map((t, j) => ({
-            title: t.title,
-            order: j + 1
-          }))
-        }))
-      };
+  setSaving(true);
+  const loadingToast = toast.loading("Creating production unit...");
 
-      const res = await api.post("/farmer/production-unit/create", payload);
-      const unitId = res?.data?.id;
+  try {
+    const payload = {
+      user_id: supabaseUser.id,
+      practice_type: practiceId,
+      category: categoryId,
+      name: metadata.name,
+      items: selectedOptions,
+      meta: metadata, // ✅ FIXED
+      stages: stages.map((s, idx) => ({
+        title: s.title,
+        order: idx + 1,
+        tasks: s.tasks.map((t, j) => ({
+          title: t.title,
+          order: j + 1,
+        })),
+      })),
+    };
 
-      alert("Production Unit Created Successfully!");
-      navigate(`/farmer/production/unit/${unitId}`, { replace: true });
-    } catch (err) {
-      console.error(err);
-      alert("Failed to create production unit.");
-    } finally {
-      setSaving(false);
-    }
-  };
+    const res = await api.post("/farmer/production-unit/create", payload);
+
+    const unitId = res?.data?.data?.id; // ✅ FIXED
+
+    toast.dismiss(loadingToast ?? undefined);
+    toast.success("Production Unit Created Successfully!");
+
+    navigate(`/farmer/production/unit/${unitId}`, { replace: true });
+  } catch (err) {
+    console.error(err);
+    toast.dismiss(loadingToast ?? undefined);
+    toast.error("Failed to create production unit.");
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   /* -------------------- Render --------------------- */
 
@@ -209,7 +223,9 @@ export default function StageTemplateEditor() {
   return (
     <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold mb-4">Review & Edit Stages</h1>
-      <p className="mb-4 text-gray-600">Production Unit: <strong>{metadata.name}</strong></p>
+      <p className="mb-4 text-gray-600">
+        Production Unit: <strong>{metadata.name}</strong>
+      </p>
 
       <button onClick={addStage} className="px-3 py-1 bg-blue-600 text-white rounded mb-4">
         Add Stage
@@ -218,6 +234,7 @@ export default function StageTemplateEditor() {
       <div className="space-y-4">
         {stages.map((stage, idx) => (
           <div key={stage.id} className="bg-white p-4 rounded shadow">
+            {/* Stage Header */}
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-gray-500">#{idx + 1}</div>
@@ -229,8 +246,12 @@ export default function StageTemplateEditor() {
               </div>
 
               <div className="flex gap-2">
-                <button onClick={() => moveStage(idx, -1)} className="px-2 py-1 bg-gray-100 rounded">Up</button>
-                <button onClick={() => moveStage(idx, 1)} className="px-2 py-1 bg-gray-100 rounded">Down</button>
+                <button onClick={() => moveStage(idx, -1)} className="px-2 py-1 bg-gray-100 rounded">
+                  Up
+                </button>
+                <button onClick={() => moveStage(idx, 1)} className="px-2 py-1 bg-gray-100 rounded">
+                  Down
+                </button>
                 <button
                   onClick={() => removeStage(stage.id)}
                   className="px-2 py-1 bg-red-100 text-red-600 rounded"
@@ -257,7 +278,11 @@ export default function StageTemplateEditor() {
                   </button>
                 </div>
               ))}
-              <button onClick={() => addTask(stage.id)} className="mt-2 px-3 py-1 bg-green-600 text-white rounded">
+
+              <button
+                onClick={() => addTask(stage.id)}
+                className="mt-2 px-3 py-1 bg-green-600 text-white rounded"
+              >
                 + Add Task
               </button>
             </div>
@@ -267,11 +292,14 @@ export default function StageTemplateEditor() {
 
       {/* Footer */}
       <div className="mt-6 flex gap-3">
-        <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">Back</button>
+        <button onClick={() => navigate(-1)} className="px-4 py-2 bg-gray-200 rounded">
+          Back
+        </button>
+
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-2 bg-emerald-600 text-white rounded"
+          className="px-6 py-2 bg-emerald-600 text-white rounded disabled:bg-gray-400"
         >
           {saving ? "Saving..." : "Save Production Unit"}
         </button>

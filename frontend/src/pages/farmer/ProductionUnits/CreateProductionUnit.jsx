@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 
-// Temporary hardcoded practices — will be backend-powered later
+// Temporary hardcoded practices (MVP) — backend later
 const PRACTICES = [
   {
     id: "crop",
@@ -13,48 +14,67 @@ const PRACTICES = [
     id: "vegetables",
     name: "Vegetable Farming",
     img: "https://images.unsplash.com/photo-1542834369-f10ebf06d3cb",
-    description: "Grow fresh vegetables like tomato, brinjal, okra and leafy greens."
+    description: "Grow tomato, brinjal, okra and leafy greens."
   },
   {
     id: "plantation",
     name: "Plantation",
     img: "https://images.unsplash.com/photo-1501004318641-b39e6451bec6",
-    description: "Long-term crops such as coconut, areca, coffee, and banana."
+    description: "Coconut, areca, coffee, banana and other perennials."
   },
   {
     id: "dairy",
     name: "Dairy",
     img: "https://images.unsplash.com/photo-1588167056545-190d51189b9b",
-    description: "Raise and manage cows, buffaloes, and milk production."
+    description: "Manage cows, buffaloes and milk production."
   },
   {
     id: "fisheries",
     name: "Fisheries",
     img: "https://images.unsplash.com/photo-1523861751938-7f78b6a18e83",
-    description: "Fish ponds for species like Rohu, Catla, Tilapia and more."
+    description: "Rohu, Catla, Tilapia and freshwater aquaculture units."
   },
   {
     id: "poultry",
     name: "Poultry",
     img: "https://images.unsplash.com/photo-1589927986089-35812388d1f4",
-    description: "Manage broilers, layers or country chicken units."
+    description: "Broilers, layers or country chicken units."
   },
   {
     id: "goat",
     name: "Goat Rearing",
     img: "https://images.unsplash.com/photo-1626520343831-926d11e890d8",
-    description: "Breed goats for meat or milk production."
+    description: "Goats for meat or milk production."
   }
 ];
 
 export default function CreateProductionUnit() {
   const navigate = useNavigate();
+  const [loadingPractice, setLoadingPractice] = useState(null); // store selected ID
 
   const handleSelect = (practiceId) => {
-    // Save selected practice globally for the wizard
-    localStorage.setItem("selected_practice", practiceId);
+    if (loadingPractice) return; // prevent double click
 
-    navigate(`/farmer/production/select-category/${practiceId}`);
+    let toastId;
+    try {
+      setLoadingPractice(practiceId);
+
+      toastId = toast.loading("Setting up your selection...");
+
+      // Save selected practice into wizard state
+      localStorage.setItem("selected_practice", practiceId);
+
+      toast.dismiss(toastId);
+      toast.success("Practice selected!");
+
+      navigate(`/farmer/production/select-category/${practiceId}`);
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error("Failed to select practice.");
+      console.error("Practice select error:", err);
+    } finally {
+      setLoadingPractice(null);
+    }
   };
 
   return (
@@ -66,7 +86,12 @@ export default function CreateProductionUnit() {
           <div
             key={p.id}
             onClick={() => handleSelect(p.id)}
-            className="cursor-pointer rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition transform hover:-translate-y-1 bg-white border border-gray-200"
+            className={`cursor-pointer rounded-xl overflow-hidden shadow-lg transition bg-white border border-gray-200 
+              ${
+                loadingPractice === p.id
+                  ? "opacity-70 pointer-events-none"
+                  : "hover:shadow-2xl hover:-translate-y-1"
+              }`}
           >
             <div className="h-40 w-full overflow-hidden">
               <img
@@ -80,8 +105,11 @@ export default function CreateProductionUnit() {
               <h2 className="text-xl font-semibold">{p.name}</h2>
               <p className="text-gray-600 text-sm mt-2">{p.description}</p>
 
-              <button className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-                Select
+              <button
+                className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded disabled:bg-gray-400"
+                disabled={loadingPractice === p.id}
+              >
+                {loadingPractice === p.id ? "Loading..." : "Select"}
               </button>
             </div>
           </div>

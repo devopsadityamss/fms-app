@@ -1,101 +1,200 @@
 # backend/app/services/farmer/task_service.py
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+from datetime import datetime, date
+from sqlalchemy.orm import Session, joinedload
+from uuid import UUID
 
-from backend.app.crud.farmer.tasks import (
-    create_task as crud_create_task,
-    get_task,
-    update_task as crud_update_task,
-    delete_task as crud_delete_task,
-    list_tasks_by_stage,
-)
-from backend.app.crud.farmer.stages import get_stage
-from backend.app.services.farmer.stage_service import (
-    recompute_stage_progress,
-)
-from backend.app.services.farmer.unit_service import (
-    recompute_unit_progress,
-)
-
-from backend.app.schemas.farmer.task import TaskCreate, TaskUpdate
+from app.models.production import UnitTask, UnitStage, ProductionUnit
+from app.models.farmer.activity import OperationLog
 
 
-# ----------------------------------------------------------
-# CREATE TASK + business logic
-# ----------------------------------------------------------
+# ====================================================================
+# MAIN: MARK TASK COMPLETE
+# ====================================================================
 
-async def create_task(payload: TaskCreate, db: AsyncSession):
-    # validate stage
-    stage = await get_stage(db, payload.stage_id)
+def mark_task_complete(db: Session, task_id: UUID, user_id: UUID | None = None):
+    """
+    Marks a UnitTask as completed and generates an OperationLog entry.
+    Handles:
+      - stage progress update
+      - auto stage progression
+      - auto unit completion
+    Returns (task, log) on success.
+    """
+
+    # Load task with stage and unit
+    task = (
+        db.query(UnitTask)
+        .options(
+            joinedload(UnitTask.stage).joinedload(UnitStage.unit)
+        )
+        .filter(UnitTask.id == task_id)
+        .first()
+    )
+
+    if not task:
+        return None, None
+
+    # Already completed?
+    if task.completed:
+        return task, None
+
+    # Mark completion
+    task.completed = True
+    task.completed_at = datetime.utcnow()
+
+    stage = task.stage
+    unit = stage.unit if stage else None
+
+    # Create operation log entry
+    op_log = OperationLog(
+        production_unit_id=unit.id if unit else None,
+        stage_id=stage.id if stage else None,
+        task_template_id=task.id,
+        performed_on=date.today(),
+        status="completed",
+        notes=f"Task '{task.title}' marked complete.",
+        reported_by_id=user_id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+
+    db.add(op_log)
+    db.add(task)
+
+    # Update stage + auto stage progression
+    update_stage_progress(db, stage)
+
+    # Update unit progress + auto-complete if all stages done
+    update_unit_progress(db, unit)
+
+    db.commit()
+    db.refresh(task)
+    db.refresh(op_log)
+
+    return task, op_log
+
+
+# ====================================================================
+# STAGE PROGRESS + AUTO PROGRESSION
+# ====================================================================
+
+def update_stage_progress(db: Session, stage: UnitStage):
+    """
+    Updates stage progress and automatically activates the next stage
+    when all stage tasks are completed.
+    """
     if not stage:
-        raise ValueError("Stage not found")
+        return
 
-    # Create task via CRUD
-    task = await crud_create_task(
-        db=db,
-        stage_id=payload.stage_id,
-        title=payload.title,
-        order=payload.order,
-        completed=payload.completed,
-        priority=payload.priority,
-        due_date=payload.due_date,
-        assigned_to=payload.assigned_to,
-    )
+    tasks = stage.tasks or []
+    total = len(tasks)
 
-    # Recompute only because NEW task affects progress
-    await recompute_stage_progress(stage.id, db)
-    await recompute_unit_progress(stage.unit_id, db)
+    if total == 0:
+        stage.progress = 0
+        stage.status = "pending"
+        db.add(stage)
+        return
 
-    return task
+    completed = sum(1 for t in tasks if t.completed)
 
+    # Calculate % progress
+    stage.progress = int((completed / total) * 100)
 
-# ----------------------------------------------------------
-# UPDATE TASK + selective business logic
-# ----------------------------------------------------------
+    # Determine stage status
+    if completed == total:
+        stage.status = "completed"
+        db.add(stage)
 
-async def update_task(task_id: str, payload: TaskUpdate, db: AsyncSession):
-    task = await get_task(db, task_id)
-    if not task:
-        return None
+        # auto-progress only when fully completed
+        activate_next_stage(db, stage)
 
-    # Determine if progress-related field changed
-    progress_related = (
-        (payload.completed is not None) or
-        (payload.order is not None)  # affects stage-level ordering
-    )
+    elif completed > 0:
+        stage.status = "active"
+    else:
+        stage.status = "pending"
 
-    # Update via CRUD
-    updated_task = await crud_update_task(db, task_id, payload)
-
-    if progress_related:
-        # Recompute progress
-        await recompute_stage_progress(task.stage_id, db)
-
-        # Get stage to extract unit_id
-        stage = await get_stage(db, task.stage_id)
-        await recompute_unit_progress(stage.unit_id, db)
-
-    return updated_task
+    db.add(stage)
 
 
-# ----------------------------------------------------------
-# DELETE TASK + business logic
-# ----------------------------------------------------------
+def activate_next_stage(db: Session, current_stage: UnitStage):
+    """
+    Activate next stage when current stage completes.
+    """
+    unit = current_stage.unit
+    if not unit:
+        return
 
-async def delete_task(task_id: str, db: AsyncSession):
-    task = await get_task(db, task_id)
-    if not task:
-        return None
+    # Ensure stages sorted by order
+    stages = sorted(unit.stages, key=lambda s: s.order)
 
-    stage_id = task.stage_id
+    # Find index of current stage
+    try:
+        idx = next(i for i, s in enumerate(stages) if s.id == current_stage.id)
+    except StopIteration:
+        return
 
-    await crud_delete_task(db, task)
+    # Last stage? No next stage exists
+    if idx >= len(stages) - 1:
+        return
 
-    # Recalculate progress since removing a task reduces totals
-    await recompute_stage_progress(stage_id, db)
+    next_stage = stages[idx + 1]
 
-    stage = await get_stage(db, stage_id)
-    await recompute_unit_progress(stage.unit_id, db)
+    # Only activate if not already active/completed
+    if next_stage.status == "pending":
+        next_stage.status = "active"
+        next_stage.progress = 0
+        db.add(next_stage)
 
-    return True
+
+# ====================================================================
+# UNIT PROGRESS + AUTO COMPLETION
+# ====================================================================
+
+def update_unit_progress(db: Session, unit: ProductionUnit):
+    """
+    Updates unit progress from all tasks in all stages.
+    Also auto-completes unit if all stages are completed.
+    """
+    if not unit:
+        return
+
+    all_tasks = []
+    for stage in unit.stages:
+        all_tasks.extend(stage.tasks)
+
+    if not all_tasks:
+        unit.progress = 0
+    else:
+        completed = sum(1 for t in all_tasks if t.completed)
+        unit.progress = int((completed / len(all_tasks)) * 100)
+
+    db.add(unit)
+
+    # Check for auto-completion
+    check_unit_completion(db, unit)
+
+
+def check_unit_completion(db: Session, unit: ProductionUnit):
+    """
+    Auto-completes the entire production unit when:
+      - all stages are completed
+      - all tasks are completed
+    """
+    if not unit or not unit.stages:
+        return
+
+    # If any stage is not completed → do nothing
+    for stage in unit.stages:
+        if stage.status != "completed":
+            return
+
+    # If reached here → all stages completed
+    unit.status = "completed"
+    unit.progress = 100
+
+    # Only set end_date if not already set
+    if not unit.end_date:
+        unit.end_date = datetime.utcnow()
+
+    db.add(unit)

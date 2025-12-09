@@ -40,6 +40,13 @@ class ProductionUnit(Base):
     stages = relationship("UnitStage", back_populates="unit", cascade="all, delete-orphan")
     options = relationship("UnitOption", back_populates="unit", cascade="all, delete-orphan")
 
+    # ⭐ NEW — required for OperationLog relationship
+    operation_logs = relationship(
+        "OperationLog",
+        back_populates="production_unit",
+        cascade="all, delete-orphan"
+    )
+
 
 # ============================================================
 # OPTIONS (unchanged)
@@ -73,6 +80,13 @@ class UnitStage(Base):
     unit = relationship("ProductionUnit", back_populates="stages")
     tasks = relationship("UnitTask", back_populates="stage", cascade="all, delete-orphan")
 
+    # ⭐ NEW — needed because OperationLog has stage_id → UnitStage
+    operation_logs = relationship(
+        "OperationLog",
+        back_populates="stage",
+        cascade="all, delete-orphan"
+    )
+
 
 # ============================================================
 # TASKS (Expanded with dates, assignee, priority)
@@ -93,3 +107,10 @@ class UnitTask(Base):
     completed_at = Column(DateTime, nullable=True)
 
     stage = relationship("UnitStage", back_populates="tasks")
+
+    # ⭐ NEW — needed because OperationLog has task_template_id → UnitTask
+    operation_logs = relationship(
+        "OperationLog",
+        back_populates="task_template",
+        cascade="all, delete-orphan"
+    )

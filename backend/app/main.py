@@ -18,7 +18,7 @@ from app.core.error_middleware import ExceptionLoggingMiddleware
 from backend.app.api.farmer import production_units as farmer_production
 from app.api.farmer import tasks as farmer_tasks
 from app.api.farmer import stages as farmer_stages
-
+from app.api.farmer import activity
 
 # ---------------------------------------------------
 # Create FastAPI instance FIRST
@@ -62,6 +62,8 @@ app.include_router(production_units.router, prefix="/farmer", tags=["farmer-unit
 app.include_router(stages.router, prefix="/farmer", tags=["farmer-stages"])
 app.include_router(tasks.router, prefix="/farmer", tags=["farmer-tasks"])
 app.include_router(dashboard.router, prefix="/farmer", tags=["farmer-dashboard"])
+router.include_router(activity.router)
+
 
 # ---------------------------------------------------
 # COMBINED startup event (create tables + seed + logs)
