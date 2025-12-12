@@ -1,3 +1,5 @@
+# backend/alembic/versions/77aad1698804_initial_schema.py
+
 """initial_schema
 
 Revision ID: 77aad1698804

@@ -1,3 +1,5 @@
+# backend/app/models/__init__.py
+
 from .profile import Profile
 from .role import Role
 from .audit_log import AuditLog

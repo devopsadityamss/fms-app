@@ -245,3 +245,198 @@ export const farmerApi = {
     }
   },
 };
+
+// Intelligence Layer APIs
+
+// --- Weather ---
+export const getWeatherOverview = (unitId) =>
+  api.get(`/farmer/unit/weather/${unitId}`);
+
+export const getWeatherCurrent = (unitId) =>
+  api.get(`/farmer/unit/weather/${unitId}/current`);
+
+export const getWeatherHourly = (unitId) =>
+  api.get(`/farmer/unit/weather/${unitId}/hourly`);
+
+export const getWeatherDaily = (unitId) =>
+  api.get(`/farmer/unit/weather/${unitId}/daily`);
+
+export const getWeatherRisk = (unitId) =>
+  api.get(`/farmer/unit/weather/${unitId}/risk`);
+
+
+// --- Advisory ---
+export const getAdvisoryOverview = (unitId, stage) =>
+  api.get(`/farmer/unit/advisory/${unitId}`, { params: { stage } });
+
+export const getGeneralAdvisory = (unitId) =>
+  api.get(`/farmer/unit/advisory/${unitId}/general`);
+
+export const getStageAdvisory = (unitId, stage) =>
+  api.get(`/farmer/unit/advisory/${unitId}/stage`, {
+    params: { stage },
+  });
+
+export const getWeatherAdvisory = (unitId) =>
+  api.get(`/farmer/unit/advisory/${unitId}/weather`);
+
+
+// --- Alerts ---
+export const getAlertsOverview = (unitId, stage, overdue = 0) =>
+  api.get(`/farmer/unit/alerts/${unitId}`, {
+    params: { stage, overdue_tasks: overdue },
+  });
+
+export const getWeatherAlerts = (unitId) =>
+  api.get(`/farmer/unit/alerts/${unitId}/weather`);
+
+export const getPestDiseaseAlerts = (unitId, stage) =>
+  api.get(`/farmer/unit/alerts/${unitId}/pest-disease`, {
+    params: { stage },
+  });
+
+export const getTaskAlerts = (unitId, overdue = 0) =>
+  api.get(`/farmer/unit/alerts/${unitId}/tasks`, {
+    params: { overdue_tasks: overdue },
+  });
+
+export const getGrowthAlerts = (unitId) =>
+  api.get(`/farmer/unit/alerts/${unitId}/growth`);
+
+
+// --- Calendar ---
+export const getCalendarOverview = (unitId) =>
+  api.get(`/farmer/unit/calendar/${unitId}`);
+
+export const getCalendarTimeline = (unitId) =>
+  api.get(`/farmer/unit/calendar/${unitId}/timeline`);
+
+export const getCalendarTasks = (unitId) =>
+  api.get(`/farmer/unit/calendar/${unitId}/tasks`);
+
+export const getWeeklyOverview = (unitId) =>
+  api.get(`/farmer/unit/calendar/${unitId}/weekly`);
+
+
+// --- Health ---
+export const getHealthOverview = (unitId, stage, overdue = 0) =>
+  api.get(`/farmer/unit/health/${unitId}`, {
+    params: { stage, overdue_tasks: overdue },
+  });
+
+export const getHealthScore = (unitId, stage) =>
+  api.get(`/farmer/unit/health/${unitId}/score`, {
+    params: { stage },
+  });
+
+
+// --- Predictions ---
+export const getPredictionsOverview = (unitId, stage) =>
+  api.get(`/farmer/unit/predictions/${unitId}`, { params: { stage } });
+
+export const getYieldPrediction = (unitId, stage) =>
+  api.get(`/farmer/unit/predictions/${unitId}/yield`, { params: { stage } });
+
+export const getHarvestPrediction = (unitId, stage) =>
+  api.get(`/farmer/unit/predictions/${unitId}/harvest`, {
+    params: { stage },
+  });
+
+export const getWaterPrediction = (unitId, stage) =>
+  api.get(`/farmer/unit/predictions/${unitId}/water`, {
+    params: { stage },
+  });
+
+export const getFertilizerPrediction = (unitId, stage) =>
+  api.get(`/farmer/unit/predictions/${unitId}/fertilizer`, {
+    params: { stage },
+  });
+
+export const getCostPrediction = (unitId, stage) =>
+  api.get(`/farmer/unit/predictions/${unitId}/cost`, { params: { stage } });
+
+
+// --- Inventory ---
+export const getInventoryOverview = (unitId, stage) =>
+  api.get(`/farmer/unit/inventory/${unitId}`, { params: { stage } });
+
+export const getInventoryRequirements = (unitId, stage) =>
+  api.get(`/farmer/unit/inventory/${unitId}/requirements`, {
+    params: { stage },
+  });
+
+export const getInventoryShortages = (unitId, stage) =>
+  api.get(`/farmer/unit/inventory/${unitId}/shortages`, {
+    params: { stage },
+  });
+
+export const getInventoryReorderList = (unitId, stage) =>
+  api.get(`/farmer/unit/inventory/${unitId}/reorder`, {
+    params: { stage },
+  });
+
+export const getInventoryWeeklyForecast = (unitId, stage) =>
+  api.get(`/farmer/unit/inventory/${unitId}/weekly`, {
+    params: { stage },
+  });
+
+
+// --- Cost ---
+export const getCostOverview = (unitId, stage, actualCost = 0) =>
+  api.get(`/farmer/unit/cost/${unitId}`, {
+    params: { stage, actual_cost: actualCost },
+  });
+
+export const getStageCost = (unitId, stage) =>
+  api.get(`/farmer/unit/cost/${unitId}/stage`, {
+    params: { stage },
+  });
+
+export const getCostProjection = (unitId, stage) =>
+  api.get(`/farmer/unit/cost/${unitId}/projection`, {
+    params: { stage },
+  });
+
+export const getCostOverrun = (unitId, stage, actualCost) =>
+  api.get(`/farmer/unit/cost/${unitId}/overrun`, {
+    params: { stage, actual_cost: actualCost },
+  });
+
+
+// --- Notifications ---
+export const getNotificationsOverview = (
+  unitId,
+  stage,
+  overdue = 0,
+  upcoming = 0
+) =>
+  api.get(`/farmer/unit/notifications/${unitId}`, {
+    params: {
+      stage,
+      overdue_tasks: overdue,
+      upcoming_tasks: upcoming,
+    },
+  });
+
+export const getWeatherNotifications = (unitId) =>
+  api.get(`/farmer/unit/notifications/${unitId}/weather`);
+
+export const getTaskNotifications = (unitId, overdue = 0, upcoming = 0) =>
+  api.get(`/farmer/unit/notifications/${unitId}/tasks`, {
+    params: { overdue_tasks: overdue, upcoming_tasks: upcoming },
+  });
+
+export const getHealthNotifications = (unitId, stage) =>
+  api.get(`/farmer/unit/notifications/${unitId}/health`, {
+    params: { stage },
+  });
+
+export const getPestNotifications = (unitId, stage) =>
+  api.get(`/farmer/unit/notifications/${unitId}/pest`, {
+    params: { stage },
+  });
+
+export const getStageNotifications = (unitId, stage) =>
+  api.get(`/farmer/unit/notifications/${unitId}/stage`, {
+    params: { stage },
+  });

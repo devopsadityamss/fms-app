@@ -1,3 +1,5 @@
+# backend/app/routers/auth.py
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 from app.core.auth import supabase_register, supabase_login

@@ -1,3 +1,5 @@
+# backend/app/models/audit_log.py
+
 from sqlalchemy import Column, String, TIMESTAMP, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base

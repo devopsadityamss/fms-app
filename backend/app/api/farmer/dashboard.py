@@ -1,11 +1,21 @@
 # backend/app/api/farmer/dashboard.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import get_db
-from backend.app.crud.farmer import units as crud_units
+from fastapi import APIRouter, HTTPException
+from typing import Dict, Any
+from app.services.farmer.dashboard_intel_service import get_dashboard_for_unit
+from fastapi import Depends   # ← ADDED
+from sqlalchemy.ext.asyncio import AsyncSession   # ← ADDED
+from app.core.database import get_db   # ← ADDED
+from backend.app.crud.farmer import units as crud_units   # ← ADDED
 
-router = APIRouter(prefix="/dashboard", tags=["farmer-dashboard"])
+router = APIRouter()
+
+@router.get("/dashboard/{unit_id}")
+def api_get_dashboard(unit_id: str):
+    res = get_dashboard_for_unit(unit_id)
+    if res.get("status") == "unit_not_found":
+        raise HTTPException(status_code=404, detail="unit_not_found")
+    return res
 
 
 @router.get("/summary/{user_id}")

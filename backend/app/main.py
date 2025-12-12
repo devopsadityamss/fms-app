@@ -1,4 +1,7 @@
+# backend/app/main.py
+
 # FORCE logger module import so handlers attach
+
 import app.core.logger
 from app.core.logger import logger
 
@@ -19,6 +22,31 @@ from backend.app.api.farmer import production_units as farmer_production
 from app.api.farmer import tasks as farmer_tasks
 from app.api.farmer import stages as farmer_stages
 from app.api.farmer import activity
+
+from app.api.farmer import (
+    unit,
+    task,
+    stage,
+    activity,
+    weather,
+    advisory,
+    alert,
+    calendar,
+    health,
+    prediction,
+    inventory,
+    cost,
+    notification,
+    # new
+    soil,
+    irrigation,
+    market,
+    profitability,
+    pest,
+    compliance,
+    sustainability,
+    intelligence,
+)
 
 # ---------------------------------------------------
 # Create FastAPI instance FIRST
@@ -62,8 +90,24 @@ app.include_router(production_units.router, prefix="/farmer", tags=["farmer-unit
 app.include_router(stages.router, prefix="/farmer", tags=["farmer-stages"])
 app.include_router(tasks.router, prefix="/farmer", tags=["farmer-tasks"])
 app.include_router(dashboard.router, prefix="/farmer", tags=["farmer-dashboard"])
-router.include_router(activity.router)
-
+app.include_router(activity.router)
+app.include_router(weather.router, prefix="/farmer/unit")
+app.include_router(advisory.router, prefix="/farmer/unit")
+app.include_router(alert.router, prefix="/farmer/unit")
+app.include_router(calendar.router, prefix="/farmer/unit")
+app.include_router(health.router, prefix="/farmer/unit")
+app.include_router(prediction.router, prefix="/farmer/unit")
+app.include_router(inventory.router, prefix="/farmer/unit")
+app.include_router(cost.router, prefix="/farmer/unit")
+app.include_router(notification.router, prefix="/farmer/unit")
+app.include_router(soil.router, prefix="/farmer/unit")
+app.include_router(irrigation.router, prefix="/farmer/unit")
+app.include_router(market.router, prefix="/farmer/unit")
+app.include_router(profitability.router, prefix="/farmer/unit")
+app.include_router(pest.router, prefix="/farmer/unit")
+app.include_router(compliance.router, prefix="/farmer/unit")
+app.include_router(sustainability.router, prefix="/farmer/unit")
+app.include_router(intelligence.router, prefix="/farmer/unit")
 
 # ---------------------------------------------------
 # COMBINED startup event (create tables + seed + logs)

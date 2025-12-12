@@ -1,3 +1,5 @@
+# backend/app/core/error_middleware.py
+
 from app.core.logger import logger
 import traceback
 

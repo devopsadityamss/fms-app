@@ -1,4 +1,5 @@
 # backend/app/models/farmer/activity.py
+
 import uuid
 from sqlalchemy import Column, Date, DateTime, ForeignKey, Integer, String, Text, Boolean, Float
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB

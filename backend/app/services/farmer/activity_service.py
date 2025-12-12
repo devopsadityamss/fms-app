@@ -1,3 +1,5 @@
+# backend/app/services/farmer/activity_service.py
+
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from uuid import UUID

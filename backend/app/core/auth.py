@@ -1,3 +1,5 @@
+# backend/app/core/auth.py
+
 import requests
 import jwt
 from fastapi import HTTPException, Depends
