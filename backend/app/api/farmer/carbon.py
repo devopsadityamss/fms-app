@@ -10,8 +10,11 @@ from app.services.farmer.carbon_service import (
     calculate_unit_carbon_balance,
     sustainability_score,
     sustainability_suggestions,
-    carbon_summary
+    carbon_summary,
+    calculate_carbon_credits,
+    carbon_full_summary
 )
+
 
 router = APIRouter()
 
@@ -64,3 +67,20 @@ def api_suggestions(unit_id: str):
 @router.get("/farmer/carbon/summary/{unit_id}")
 def api_summary(unit_id: str):
     return carbon_summary(unit_id)
+
+
+
+@router.get("/farmer/carbon/credits/{unit_id}")
+def api_carbon_credits(
+    unit_id: str,
+    price_per_t_co2: float = Query(6.0)
+):
+    return calculate_carbon_credits(unit_id, price_per_t_co2)
+
+
+@router.get("/farmer/carbon/full-summary/{unit_id}")
+def api_carbon_full_summary(
+    unit_id: str,
+    price_per_t_co2: float = Query(6.0)
+):
+    return carbon_full_summary(unit_id, price_per_t_co2)

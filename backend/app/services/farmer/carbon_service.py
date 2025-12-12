@@ -153,3 +153,69 @@ def carbon_summary(unit_id: str) -> Dict[str, Any]:
         "events": list_carbon_events(unit_id),
         "timestamp": _now()
     }
+
+# -------------------------------------------------------------
+# CARBON CREDITS CALCULATION (NEW EXTENSION)
+# -------------------------------------------------------------
+
+def calculate_carbon_credits(unit_id: str, price_per_t_co2: float = 6.0) -> Dict[str, Any]:
+    """
+    Uses existing carbon balance:
+      - If net carbon is NEGATIVE => farmer is sequestering more than emitting
+      - Eligible credits = (-net_carbon_kg / 1000)  # convert kg → tonnes CO2e
+      - Otherwise no credits
+
+    price_per_t_co2 = market / program price for carbon credit (USD or INR equivalent)
+
+    Returns:
+      - eligible_credits_t  (tCO2e)
+      - estimated_value     (price × credits)
+    """
+    bal = calculate_unit_carbon_balance(unit_id)
+    net_kg = bal["net_carbon_kg"]
+
+    # Negative net = sequestration surplus (credit eligible)
+    if net_kg < 0:
+        eligible_tonnes = round(abs(net_kg) / 1000.0, 4)
+    else:
+        eligible_tonnes = 0.0
+
+    estimated_value = round(eligible_tonnes * float(price_per_t_co2), 2)
+
+    return {
+        "unit_id": unit_id,
+        "eligible_credits_t": eligible_tonnes,
+        "estimated_value": estimated_value,
+        "price_per_t_co2": price_per_t_co2,
+        "carbon_balance": bal
+    }
+
+
+# -------------------------------------------------------------
+# FULL SUMMARY INCLUDING CREDITS (NEW)
+# -------------------------------------------------------------
+def carbon_full_summary(unit_id: str, price_per_t_co2: float = 6.0) -> Dict[str, Any]:
+    """
+    Returns unified carbon profile including:
+      - emissions
+      - sequestration
+      - net carbon
+      - sustainability score
+      - suggestions
+      - eligible carbon credits
+      - estimated revenue
+      - raw events
+    """
+
+    credits = calculate_carbon_credits(unit_id, price_per_t_co2)
+    summary = carbon_summary(unit_id)  # your existing summary function
+
+    return {
+        "unit_id": unit_id,
+        "credits": credits,
+        "summary": summary["summary"],
+        "sustainability_score": summary["sustainability_score"],
+        "suggestions": summary["suggestions"],
+        "events": summary["events"],
+        "timestamp": _now()
+    }
